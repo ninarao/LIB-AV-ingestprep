@@ -270,7 +270,7 @@ def write_middle(middle_orig, middle_new, destination, video_list, audio_list, c
         justName = Path(file).stem
         extension = Path(file).suffix
         middle_name = justName.replace(middle_orig, middle_new, 1) + extension
-        print(middle_name)
+        print(f'{justName}{extension} to {middle_name}')
         
     proceed_yn = ask_yes_no('proceed with renaming?')
     if proceed_yn == 'Y':
@@ -282,23 +282,59 @@ def write_middle(middle_orig, middle_new, destination, video_list, audio_list, c
 #             os.rename(file, middle_name)
     else:
         print('exiting')
-    
+        
 def get_suffix():
-    
-    
+    while True:
+        file_ext = input('\n\n**** enter extension of files or type skip:\n\n')
+        if file_ext == 'skip':
+            file_ext = "skip"
+            suffix = "zip"
+            print('skipping this step')
+            return file_ext, suffix
+        if file_ext != '':
+            suffix = None
+            while suffix not in ['ARCH', 'PROD', 'SERV']:
+                suffix = input('\n\n**** choose suffix to add: ARCH, PROD, or SERV\n\n').upper()
+                if suffix == 'ARCH':
+                    print('you chose ARCH')
+                    suffix = "ARCH"
+                    break
+                if suffix == 'PROD':
+                    print('you chose PROD')
+                    suffix = "PROD"
+                    break
+                if suffix == 'SERV':
+                    print('you chose SERV')
+                    suffix = "SERV"
+                    break
+                else:
+                    suffix = ''
+                    print('\n\n**** invalid input.')
+            proceed_yn = ask_yes_no(f'add "_{suffix}" to files ending in ".{file_ext}"?')
+            if proceed_yn == 'Y':
+                return file_ext, suffix
+            else:
+                print('\n\n**** try again')
 
-
-def write_suffix():
-    
-
-
-#   rename files in staging directory according to filenames in metadata ingest csv
-#   cd into staging directory and use a combination of these loops as needed
-#   Append string to filename (before extension)
-#     for i in *.[ext]; do mv "$i" "${i%.mov}[newstring].mov"; done
-#     example: for i in *.mov; do mv "$i" "${i%.mov}_P0001_ARCH.mov"; done
-
-
+def write_suffix(file_ext, suffix, destination):
+    os.chdir(destination)
+    print('building file list...')
+    for file in glob.glob(f"*.{file_ext}"):
+        justName = Path(file).stem
+        extension = Path(file).suffix
+        suffix_name = justName + '_' + suffix + extension
+        print(f'{justName}{extension} to {suffix_name}')
+        
+    proceed_yn = ask_yes_no('proceed with renaming?')
+    if proceed_yn == 'Y':
+        for file in glob.glob(f"*.{file_ext}"):
+            justName = Path(file).stem
+            extension = Path(file).suffix
+            suffix_name = justName + '_' + suffix + extension
+            print(suffix_name)
+#             os.rename(file, suffix_name)
+    else:
+        print('exiting')
 
 
 def main(args_):
@@ -318,13 +354,30 @@ def main(args_):
     if header != '' and header != 'skip':
         write_prepend(header, destination, video_list, audio_list, checksum_list)
     middle_orig, middle_new = get_middle()
-    print(middle_orig)
-    print(middle_new)
     if middle_orig != 'skip':
         write_middle(middle_orig, middle_new, destination, video_list, audio_list, checksum_list)
+    suffix_yn = ask_yes_no('add suffix to filenames?')
+    if suffix_yn == 'N':
+        print('skipping this step')
+    if suffix_yn == 'Y':
+        file_ext, suffix = get_suffix()
+        if file_ext != 'skip':
+            write_suffix(file_ext, suffix, destination)
+            while True:
+                run_again = ask_yes_no('\n\n**** add another suffix?')
+                if run_again == 'Y':
+                    file_ext, suffix = get_suffix()
+                    if file_ext != 'skip':
+                        write_suffix(file_ext, suffix, destination)
+                    else:
+                        break
+                else:
+                    break
 
 
-#def prep_staging():
+
+
+def prep_staging():
 #   prepare staging directory
 #       upload metadata csv to staging directory
 #       all files should be in staging directory, with no subdirectories (all files at the same level)
@@ -337,6 +390,44 @@ def main(args_):
 #           ex: MSS1256 (for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
 
 
+
+def sort_csv(csv_file, key):
+    '''
+    Sorts a csv_file by a key. The key being a field heading.
+    '''
+    new_filename = os.path.splitext(os.path.basename(csv_file))[0] + '_sorted.csv'
+    sorted_filepath = os.path.join(os.path.dirname(csv_file), new_filename)
+    values, fieldnames = extract_metadata(csv_file)
+    with open(sorted_filepath, 'w') as csvfile:
+        newlist = sorted(values, key=operator.itemgetter(key))
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
+        writer.writeheader()
+        for i in newlist:
+            writer.writerow(i)
+    return sorted_filepath
+
+def recursive_file_list(video_files):
+    '''
+    Recursively searches through directories for AV files and adds to a list.
+    '''
+    recursive_list = []
+    for root, _, filenames in os.walk(video_files):
+        for filename in filenames:
+            if filename.endswith(('.MP4', '.mp4', '.MOV', '.mov', '.mkv', '.mxf', '.MXF', '.WAV', '.wav', '.aiff', '.AIFF', 'mp3', 'MP3', 'm2t', 'MTS', '.dv', '.DV', '.iso', '.ISO')):
+                recursive_list.append(os.path.join(root, filename))
+    return recursive_list
+
+
+def extract_metadata(csv_file):
+    '''
+    Read the csv and store the data in a list of dictionaries.
+    '''
+    object_dictionaries = []
+    input_file = csv.DictReader(open(csv_file, encoding='utf-8'))
+    headers = input_file.fieldnames
+    for rows in input_file:
+        object_dictionaries.append(rows)
+    return object_dictionaries, headers
 
 
 if __name__ == '__main__':
