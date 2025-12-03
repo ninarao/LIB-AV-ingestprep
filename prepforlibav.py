@@ -377,7 +377,7 @@ def main(args_):
 
 
 
-def prep_staging():
+#   def prep_staging():
 #   prepare staging directory
 #       upload metadata csv to staging directory
 #       all files should be in staging directory, with no subdirectories (all files at the same level)
@@ -389,45 +389,6 @@ def prep_staging():
 #       if it doesn't, under the directory for the appropriate library, create a directory for the collection:
 #           ex: MSS1256 (for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
 
-
-
-def sort_csv(csv_file, key):
-    '''
-    Sorts a csv_file by a key. The key being a field heading.
-    '''
-    new_filename = os.path.splitext(os.path.basename(csv_file))[0] + '_sorted.csv'
-    sorted_filepath = os.path.join(os.path.dirname(csv_file), new_filename)
-    values, fieldnames = extract_metadata(csv_file)
-    with open(sorted_filepath, 'w') as csvfile:
-        newlist = sorted(values, key=operator.itemgetter(key))
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
-        writer.writeheader()
-        for i in newlist:
-            writer.writerow(i)
-    return sorted_filepath
-
-def recursive_file_list(video_files):
-    '''
-    Recursively searches through directories for AV files and adds to a list.
-    '''
-    recursive_list = []
-    for root, _, filenames in os.walk(video_files):
-        for filename in filenames:
-            if filename.endswith(('.MP4', '.mp4', '.MOV', '.mov', '.mkv', '.mxf', '.MXF', '.WAV', '.wav', '.aiff', '.AIFF', 'mp3', 'MP3', 'm2t', 'MTS', '.dv', '.DV', '.iso', '.ISO')):
-                recursive_list.append(os.path.join(root, filename))
-    return recursive_list
-
-
-def extract_metadata(csv_file):
-    '''
-    Read the csv and store the data in a list of dictionaries.
-    '''
-    object_dictionaries = []
-    input_file = csv.DictReader(open(csv_file, encoding='utf-8'))
-    headers = input_file.fieldnames
-    for rows in input_file:
-        object_dictionaries.append(rows)
-    return object_dictionaries, headers
 
 
 if __name__ == '__main__':
