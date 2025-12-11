@@ -5,14 +5,17 @@ import sys
 import glob
 import subprocess
 import csv
+import argparse
+from pathlib import Path
+import shutil
 
-sys.argv = [
-    'prepforlibav.py',
-#     '/Users/nraogra/Desktop/Captioning/whisperdemo/vkttt_7min/data',
-#     '-c',
-#     '/Users/nraogra/Desktop/test.csv',
-#     '-o'
-    ]
+# sys.argv = [
+#     'prepforlibav.py',
+#     '/Users/nraogra/Downloads/Carlos/',
+#     '/Users/nraogra/Desktop/Carlos',
+#     '/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10.csv', 
+#     '-s'
+#     ]
 
 def setup(args_):
     parser = argparse.ArgumentParser(
@@ -34,12 +37,8 @@ def setup(args_):
         action='store_true',
         help='skips the copy to staging directory step'
     )
-
-    source = os.path.abspath(args.source)
-    destination = args.destination
-    csv_dir = os.path.abspath(args.csv_location)
-
-    return args, source, destination
+    args = parser.parse_args(args_)
+    return args
 
 def ask_yes_no(question):
     '''
@@ -63,12 +62,13 @@ def copy_to_stage(source, destination):
         os.makedirs(destination)
     else:
         pass
+    sourceContents = source + '/'
     cmd_dryrun = [
         'rsync', '--dry-run',
         '-ah', '-vv',
-#         '--exclude=.*', '--exclude=.*/',
+        '--exclude=.*', '--exclude=.*/',
         '--progress', '--stats',
-        source, destination
+        sourceContents, destination
     ]
     print(f"dry run of copy to stage command: {cmd_dryrun}")
     subprocess.call(cmd_dryrun)
@@ -79,9 +79,9 @@ def copy_to_stage(source, destination):
         cmd_copy = [
             'rsync', 
             '-ah', '-vv',
-#             '--exclude=.*', '--exclude=.*/',
+            '--exclude=.*', '--exclude=.*/',
             '--progress', '--stats',
-            source, destination
+            sourceContents, destination
         ]
         print(cmd_copy)
         subprocess.call(cmd_copy)
@@ -92,17 +92,67 @@ def copy_to_stage(source, destination):
         else:
             sys.exit()
             
-def checksum_match(source, destination)
+def checksum_match(source, destination):
+    sourceContents = source + '/'
     cmd_checkmatch = [
         'rsync',
         '--dry-run',
         '--checksum',
         '-ah', '-vv',
         '--progress',
-        source, destination
+        sourceContents, destination
     ]
     print(cmd_checkmatch)
     subprocess.call(cmd_checkmatch)
+    
+def move_to_root(maindir):
+    os.chdir(maindir)      
+    subdirs = os.listdir(maindir)
+    subs=[]
+    for dir in subdirs:
+        if os.path.isdir(dir) == True:
+            subdir_path = os.path.join(maindir,dir)
+            subs.append(subdir_path)
+    if not subs:
+        print('no subdirectories, moving to next step.')
+        return
+    else:
+        print('subdirectories found:')
+        for subdir in subs:
+            print('\t' + subdir)
+        move_yn = ask_yes_no('move all files to main directory?')
+        if move_yn == 'Y':
+            orig_full=[]
+            new_full=[]
+            for subdir in subs:
+                print('moving for %s' % subdir)
+                for root, dirs, files in os.walk(subdir):
+                    for file in files:
+                        full = os.path.join(root, file)
+                        abs_full = os.path.abspath(full)
+                        str_dir = abs_full.replace(maindir, '')
+                        str_dir = str_dir.replace('\\', '', 1)
+                        str_dir = str_dir.replace('/', '', 1)
+                        str_dir = str_dir.replace('\\', '_')
+                        str_dir = str_dir.replace('/', '_')
+                        str_dir = str_dir.replace(', ', '_')
+                        str_dir = str_dir.replace(',', '_')
+                        str_dir = str_dir.replace(' ', '_')
+                        new_file_path = os.path.join(maindir, str_dir)
+                        orig_full.append(full)
+                        new_full.append(new_file_path)
+                        print('\t' + full + '\n\t' + new_file_path)
+                print('---')
+            proceed = ask_yes_no('proceed?')
+            if proceed == 'Y':
+                for item1, item2 in zip(orig_full, new_full):
+                    shutil.move(item1, item2)
+            else:
+                print('skipping file move.')
+                return
+        else:
+            print('skipping file move.')
+            return
 
 def get_video_files(destination):
     video_list = []
@@ -122,7 +172,7 @@ def get_audio_files(destination):
         folder_list = os.listdir(destination)
         for filename in folder_list:
             if not filename[0] == '.':
-                if filename.lower().endswith(('.WAV', '.wav', '.aiff', '.AIFF', 'mp3', 'MP3')):
+                if filename.lower().endswith(('.WAV', '.wav', '.aiff', '.AIFF', '.mp3', '.MP3')):
                     audio_list.append(os.path.join(destination, filename))
     elif os.path.isfile(destination):
         audio_list = [destination]
@@ -142,13 +192,17 @@ def get_checksum_files(destination):
 
 def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
     # write mediainfo output to csv
+    if not os.path.exists(csv_file):
+        print(f"no file {csv_file} exists, making file")
+    else:
+        pass
     print(csv_file)
     with open(csv_file, 'a', encoding='utf-8', newline='') as f:
         writer=csv.writer(f)
         for file in video_list:
             cmd_video = [
                 'mediainfo',
-                '--Output=General;%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String%,\nAudio;%Format% %SamplingRate/String% %BitDepth/String%NEWLINE',
+                '--Output=General;%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String%,\nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
                 file]
             try:
                 csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
@@ -161,27 +215,27 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
         for file in audio_list:
             cmd_audio = [
                 'mediainfo', 
-                '--Output=General;%FileNameExtension%,\nAudio;%Duration/String3%,%Format% %SamplingRate/String% %BitDepth/String%NEWLINE', 
+                '--Output=General;%FileNameExtension%,\nAudio;%Duration/String3%,%Format% %SamplingRate/String% %BitDepth/String%', 
                 file]
             try:
                 csv_audio = subprocess.check_output(cmd_audio).decode(sys.stdout.encoding)
             except subprocess.CalledProcessError as e:
                 print(f"Command failed with error code {e.returncode}: {e.csv_variable.decode('utf-8')}")
             print(csv_audio)
-            split_audio = csv_video.split(',')
+            split_audio = csv_audio.split(',')
             writer.writerow(split_audio)
             
         for file in checksum_list:
             cmd_checksum = [
                 'mediainfo', 
-                '--Output=General;%FileNameExtension%NEWLINE',
+                '--Output=General;%FileNameExtension%',
                 file]
             try:
                 csv_checksum = subprocess.check_output(cmd_checksum).decode(sys.stdout.encoding)
             except subprocess.CalledProcessError as e:
                 print(f"Command failed with error code {e.returncode}: {e.csv_variable.decode('utf-8')}")
             print(csv_checksum)
-            split_checksum = csv_video.split(',')
+            split_checksum = csv_checksum.split(',')
             writer.writerow(split_checksum)
         f.close()
 
@@ -228,7 +282,7 @@ def write_prepend(header, destination, video_list, audio_list, checksum_list):
             extension = Path(file).suffix
             prepended_name = header + '_' + justName + extension
             print(prepended_name)
-#             os.rename(file, prepended_name)
+            os.rename(file, prepended_name)
     else:
         print('exiting')
 
@@ -279,7 +333,7 @@ def write_middle(middle_orig, middle_new, destination, video_list, audio_list, c
             extension = Path(file).suffix
             middle_name = justName.replace(middle_orig, middle_new, 1) + extension
             print(middle_name)
-#             os.rename(file, middle_name)
+            os.rename(file, middle_name)
     else:
         print('exiting')
         
@@ -332,18 +386,22 @@ def write_suffix(file_ext, suffix, destination):
             extension = Path(file).suffix
             suffix_name = justName + '_' + suffix + extension
             print(suffix_name)
-#             os.rename(file, suffix_name)
+            os.rename(file, suffix_name)
     else:
         print('exiting')
 
 
 def main(args_):
-    args, source, destination, csv_dir = setup(args_)
-    if not args.s:
-        copytostage(source, destination)
+    args = setup(args_)
+    source = os.path.abspath(args.source)
+    destination = args.destination
+    csv_file = os.path.abspath(args.csv_location)
+    if args.skipcopy == False:
+        copy_to_stage(source, destination)
         checksum_match(source, destination)
     else:
         pass
+    move_to_root(destination)
     video_list = get_video_files(destination)
     audio_list = get_audio_files(destination)
     checksum_list = get_checksum_files(destination)
@@ -375,20 +433,17 @@ def main(args_):
                     break
 
 
-
-
-#   def prep_staging():
-#   prepare staging directory
-#       upload metadata csv to staging directory
-#       all files should be in staging directory, with no subdirectories (all files at the same level)
-#       staging directory should be named in this format: MSSXXXX_YYYY_MM_DD
-#           (XXXX = collection number; for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
-#   prepare destination directory (requires static IP, so can only be done from front audio workstation)
-#       connect to LIB-AV server
-#       check if a directory already exists for the collection (or series/record group for EUA, Oxford, and Pitts)
-#       if it doesn't, under the directory for the appropriate library, create a directory for the collection:
-#           ex: MSS1256 (for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
-
+# def prep_staging():
+# #   prepare staging directory
+# #       upload metadata csv to staging directory
+# #       all files should be in staging directory, with no subdirectories (all files at the same level)
+# #       staging directory should be named in this format: MSSXXXX_YYYY_MM_DD
+# #           (XXXX = collection number; for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
+# #   prepare destination directory (requires static IP, so can only be done from front audio workstation)
+# #       connect to LIB-AV server
+# #       check if a directory already exists for the collection (or series/record group for EUA, Oxford, and Pitts)
+# #       if it doesn't, under the directory for the appropriate library, create a directory for the collection:
+# #           ex: MSS1256 (for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
 
 
 if __name__ == '__main__':
