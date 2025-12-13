@@ -8,14 +8,16 @@ import csv
 import argparse
 from pathlib import Path
 import shutil
+import pandas as pd
 
-# sys.argv = [
-#     'prepforlibav.py',
-#     '/Users/nraogra/Downloads/Carlos/',
-#     '/Users/nraogra/Desktop/Carlos',
-#     '/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10.csv', 
-#     '-s'
-#     ]
+
+sys.argv = [
+    'prepforlibav.py',
+    '/Users/nraogra/Downloads/Carlos/',
+    '/Users/nraogra/Desktop/Carlos',
+    '/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10.csv', 
+    '-s'
+    ]
 
 def setup(args_):
     parser = argparse.ArgumentParser(
@@ -202,7 +204,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
         for file in video_list:
             cmd_video = [
                 'mediainfo',
-                '--Output=General;%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String%,\nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
+                '--Output=General;fileset,Video,Primary Content,%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String%,\nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
                 file]
             try:
                 csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
@@ -215,7 +217,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
         for file in audio_list:
             cmd_audio = [
                 'mediainfo', 
-                '--Output=General;%FileNameExtension%,\nAudio;%Duration/String3%,%Format% %SamplingRate/String% %BitDepth/String%', 
+                '--Output=General;fileset,Audio,Primary Content,%FileNameExtension%,\nAudio;%Duration/String3%,,%Format% %SamplingRate/String% %BitDepth/String%', 
                 file]
             try:
                 csv_audio = subprocess.check_output(cmd_audio).decode(sys.stdout.encoding)
@@ -228,7 +230,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
         for file in checksum_list:
             cmd_checksum = [
                 'mediainfo', 
-                '--Output=General;%FileNameExtension%',
+                '--Output=General;fileset,checksum files,Content Validation,%FileNameExtension%',
                 file]
             try:
                 csv_checksum = subprocess.check_output(cmd_checksum).decode(sys.stdout.encoding)
@@ -390,6 +392,16 @@ def write_suffix(file_ext, suffix, destination):
     else:
         print('exiting')
 
+def add_csv_header(csv_file, header_list):
+    df = pd.read_csv(csv_file, header=None)
+    df.columns = header_list
+    df.to_csv(csv_file, index=False, header=True)
+    df.insert(4, 'service_file', '')
+    serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
+    df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
+    df.loc[serv_df, 'preservation_master_file'] = ''
+    df.to_csv(csv_file, index=False, header=True)
+    
 
 def main(args_):
     args = setup(args_)
@@ -431,6 +443,9 @@ def main(args_):
                         break
                 else:
                     break
+#     add_csv_header(csv_file,
+#                ['type', 'fileset_label', 'pcdm_use', 'preservation_master_file', 'extent', 'technical_note',
+#                 'master_file_note', 'service_file_note'])
 
 
 # def prep_staging():
