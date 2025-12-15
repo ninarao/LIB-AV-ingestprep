@@ -396,10 +396,22 @@ def add_csv_header(csv_file, header_list):
     df = pd.read_csv(csv_file, header=None)
     df.columns = header_list
     df.to_csv(csv_file, index=False, header=True)
-    df.insert(4, 'service_file', '')
+    df.insert(4, 'intermediate_file', '')
+    df.insert(5, 'service_file', '')
+    arch_df = df['preservation_master_file'].str.contains('ARCH', na=False)
+#     prod_df = df['intermediate_file'].str.contains('PROD', na=False)
     serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
+#     df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
+#     df.loc[prod_df, 'preservation_master_file'] = ''
     df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
     df.loc[serv_df, 'preservation_master_file'] = ''
+#     servv_df = df['service_file'].str.contains('SERV', na=False)
+#     video_df = df['fileset_label'].str.contains('Video', na=False)
+#     audio_df = df['fileset_label'].str.contains('Audio', na=False)
+#     vid_arch = df[arch_df & video_df]
+#     vid_serv = df[servv_df & video_df]
+#     aud_serv = df[servv_df & audio_df]
+    df['combined_file_note'] = df['master_file_note'].fillna('').str.cat(df['service_file_note'].fillna(''), sep=' ')
     df.to_csv(csv_file, index=False, header=True)
     
 
@@ -446,7 +458,8 @@ def main(args_):
 #     add_csv_header(csv_file,
 #                ['type', 'fileset_label', 'pcdm_use', 'preservation_master_file', 'extent', 'technical_note',
 #                 'master_file_note', 'service_file_note'])
-
+#                 'transfer_engineer', 'date_digitized',
+#                 'staff_notes', 'emory_ark', 'emory_ark2'])
 
 # def prep_staging():
 # #   prepare staging directory
