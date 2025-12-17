@@ -204,7 +204,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
         for file in video_list:
             cmd_video = [
                 'mediainfo',
-                '--Output=General;fileset,Video,Primary Content,%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String%,\nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
+                '--Output=General;fileset,Video,Primary Content,%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String% \nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
                 file]
             try:
                 csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
@@ -392,27 +392,82 @@ def write_suffix(file_ext, suffix, destination):
     else:
         print('exiting')
 
-def add_csv_header(csv_file, header_list):
+def arrange_csv(csv_file, header_list):
     df = pd.read_csv(csv_file, header=None)
     df.columns = header_list
     df.to_csv(csv_file, index=False, header=True)
     df.insert(4, 'intermediate_file', '')
     df.insert(5, 'service_file', '')
+    df.insert(8, 'transfer_engineer', '')
+    df.insert(9, 'date_digitized', '')
+    df.insert(10, 'staff_notes', '')
+    df.insert(12, 'intermediate_file_note', '')
+    df.insert(13, 'service_file_note', '')
+    df.insert(14, 'emory_ark', '')
+    df.insert(15, 'emory_ark2', '')
+    
+    if prod == 'Y':
+        prod_df = df['preservation_master_file'].str.contains('PROD', na=False)
+        df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
+        df.loc[prod_df, 'preservation_master_file'] = ''
+        df.loc[prod_df, 'intermediate_file_note'] = df.loc[prod_df, 'master_file_note']
+        df.loc[prod_df, 'master_file_note'] = ''
+        df['intermediate_file_note'] = df['intermediate_file_note'].str.replace(r'[\n]+', '', regex=True)
+        df['inter_slice'] = df['intermediate_file'].str[:-8]
+    else:
+        df['inter_slice'] = ''
+    if serv == 'Y':
+        serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
+        df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
+        df.loc[serv_df, 'preservation_master_file'] = ''
+        df.loc[serv_df, 'service_file_note'] = df.loc[serv_df, 'master_file_note']
+        df.loc[serv_df, 'master_file_note'] = ''
+        df['service_file_note'] = df['service_file_note'].str.replace(r'[\n]+', '', regex=True)
+        df['serv_slice'] = df['service_file'].str[:-8]
+    else:
+        df['serv_slice'] = ''
+         
     arch_df = df['preservation_master_file'].str.contains('ARCH', na=False)
-#     prod_df = df['intermediate_file'].str.contains('PROD', na=False)
-    serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
-#     df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
-#     df.loc[prod_df, 'preservation_master_file'] = ''
-    df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
-    df.loc[serv_df, 'preservation_master_file'] = ''
-#     servv_df = df['service_file'].str.contains('SERV', na=False)
-#     video_df = df['fileset_label'].str.contains('Video', na=False)
-#     audio_df = df['fileset_label'].str.contains('Audio', na=False)
-#     vid_arch = df[arch_df & video_df]
-#     vid_serv = df[servv_df & video_df]
-#     aud_serv = df[servv_df & audio_df]
-    df['combined_file_note'] = df['master_file_note'].fillna('').str.cat(df['service_file_note'].fillna(''), sep=' ')
+    df['master_file_note'] = df['master_file_note'].str.replace(r'[\n]+', '', regex=True)
+    
+    if prod == 'Y' or serv == 'Y':
+        df['master_slice'] = df['preservation_master_file'].str[:-8]
+
+    if prod == 'Y':
+        merged_df = pd.merge(df, df[['master_slice']].reset_index(),
+                     left_on='inter_slice', right_on='master_slice',
+                     suffixes=('_int', '_ma'), how='left')
+        # print(merged_df[['inter_slice', 'master_slice_int', 'index']])
+        merged_df = merged_df.rename(columns={'index': 'pres_index'})
+        # print(merged_df[['inter_slice', 'master_slice_int', 'pres_index']])
+        keep_rows = merged_df.dropna(subset=['master_slice_ma'])
+        print(keep_rows)
+        intf_list = keep_rows['intermediate_file'].to_list()
+        intfn_list = keep_rows['intermediate_file_note'].to_list()
+        new_row = keep_rows['pres_index'].to_list()
+        print(intf_list)
+        print(intfn_list)
+        print(new_row)
+        df.loc[new_row, 'intermediate_file'] = intf_list
+        df.loc[new_row, 'intermediate_file_note'] = intfn_list
+
+    if serv == 'Y':
+        merged_df = pd.merge(df, df[['master_slice']].reset_index(),
+                     left_on='serv_slice', right_on='master_slice',
+                     suffixes=('_serv', '_ma'), how='left')
+        # print(merged_df[['serv_slice', 'master_slice_serv', 'index']])
+        merged_df = merged_df.rename(columns={'index': 'pres_index'})
+        # print(merged_df[['serv_slice', 'master_slice_serv', 'pres_index']])
+        keep_rows = merged_df.dropna(subset=['master_slice_ma'])
+        sf_list = keep_rows['service_file'].to_list()
+        sfn_list = keep_rows['service_file_note'].to_list()
+        new_row = keep_rows['pres_index'].to_list()
+        df.loc[new_row, 'service_file'] = sf_list
+        df.loc[new_row, 'service_file_note'] = sfn_list
+    
     df.to_csv(csv_file, index=False, header=True)
+    df_dropped = df.drop(columns=['inter_slice', 'serv_slice', 'master_slice'], errors='ignore')
+    df_dropped.to_csv(csv_file, index=False, header=True)
     
 
 def main(args_):
@@ -455,11 +510,9 @@ def main(args_):
                         break
                 else:
                     break
-#     add_csv_header(csv_file,
-#                ['type', 'fileset_label', 'pcdm_use', 'preservation_master_file', 'extent', 'technical_note',
-#                 'master_file_note', 'service_file_note'])
-#                 'transfer_engineer', 'date_digitized',
-#                 'staff_notes', 'emory_ark', 'emory_ark2'])
+    arrange_csv('/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10_test.csv',
+                   ['type', 'fileset_label', 'pcdm_use', 'preservation_master_file', 'extent', 'technical_note',
+                    'master_file_note'], 'N', 'Y')
 
 # def prep_staging():
 # #   prepare staging directory
