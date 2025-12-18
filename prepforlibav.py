@@ -11,13 +11,13 @@ import shutil
 import pandas as pd
 
 
-sys.argv = [
-    'prepforlibav.py',
-    '/Users/nraogra/Downloads/Carlos/',
-    '/Users/nraogra/Desktop/Carlos',
-    '/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10.csv', 
-    '-s'
-    ]
+# sys.argv = [
+#     'prepforlibav.py',
+#     '/Users/nraogra/Downloads/Carlos/',
+#     '/Users/nraogra/Desktop/Carlos',
+#     '/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10.csv', 
+#     '-s'
+#     ]
 
 def setup(args_):
     parser = argparse.ArgumentParser(
@@ -438,13 +438,11 @@ def arrange_csv(csv_file, header_list, prod, serv):
         merged_df = merged_df.rename(columns={'index': 'pres_index'})
         # print(merged_df[['inter_slice', 'master_slice_int', 'pres_index']])
         keep_rows = merged_df.dropna(subset=['master_slice_ma'])
-        print(keep_rows)
+        
         intf_list = keep_rows['intermediate_file'].to_list()
         intfn_list = keep_rows['intermediate_file_note'].to_list()
         new_row = keep_rows['pres_index'].to_list()
-        print(intf_list)
-        print(intfn_list)
-        print(new_row)
+
         df.loc[new_row, 'intermediate_file'] = intf_list
         df.loc[new_row, 'intermediate_file_note'] = intfn_list
 
@@ -477,6 +475,11 @@ def main(args_):
     source = os.path.abspath(args.source)
     destination = args.destination
     csv_file = os.path.abspath(args.csv_location)
+    csv_basename = os.path.basename(csv_file)
+    csv_path = os.path.dirname(csv_file)
+    name, extension = os.path.splitext(csv_basename)
+    csv_log_name = name + '_log' + extension
+    csv_log = os.path.join(csv_path, csv_log_name)
     if args.skipcopy == False:
         copy_to_stage(source, destination)
         checksum_match(source, destination)
@@ -494,16 +497,46 @@ def main(args_):
     if middle_orig != 'skip':
         write_middle(middle_orig, middle_new, destination, video_list, audio_list, checksum_list)
     suffix_yn = ask_yes_no('add suffix to filenames?')
+    suffixes = []
     if suffix_yn == 'N':
-        print('skipping this step')
-    if suffix_yn == 'Y':
+        print('which file types are in this batch? choose all that apply.')
+        print('1) ARCH')
+        print('2) PROD')
+        print('3) SERV')
+        valid_choices = [1, 2, 3]
+        index = 0
+        max = 3
+        while index < max:
+            answer = input('enter numbers separated by spaces: ').upper().split()
+            answer_list = list(map(int, answer))
+            max = len(answer_list)
+            for char in answer_list:
+                if char not in valid_choices:
+                    print(f'invalid input: {answer}\n try again.')
+                elif char == 1:
+                    suffixes.append('ARCH')
+                    index += 1
+                elif char == 2:
+                    suffixes.append('PROD')
+                    index += 1
+                elif char == 3:
+                    suffixes.append('SERV')
+                    index += 1
+                else:
+                    break
+        print('file types in this batch:', *suffixes)
+    elif suffix_yn == 'Y':
         file_ext, suffix = get_suffix()
+        if suffix in ['PROD', 'SERV']:
+            suffixes.append(suffix)
         if file_ext != 'skip':
             write_suffix(file_ext, suffix, destination)
             while True:
                 run_again = ask_yes_no('\n\n**** add another suffix?')
                 if run_again == 'Y':
                     file_ext, suffix = get_suffix()
+                    if suffix in ['PROD', 'SERV']:
+                        suffixes.append(suffix)
                     if file_ext != 'skip':
                         write_suffix(file_ext, suffix, destination)
                     else:
@@ -511,12 +544,20 @@ def main(args_):
                 else:
                     break
     df_log = pd.read_csv(csv_file)
-    df_log.to_csv('/Users/nraogra/Desktop/Carlos/log.csv', index=False, header=True)
+    df_log.to_csv(csv_log, index=False, header=True)
+    if 'PROD' in suffixes:
+        prod = 'Y'
+    else:
+        prod = 'N'
+    if 'SERV' in suffixes:
+        serv = 'Y'
+    else:
+        serv = 'N'
     arrange_csv(csv_file,
                 ['type', 'fileset_label', 'pcdm_use',
                  'preservation_master_file', 'extent',
                  'technical_note', 'master_file_note'],
-                'N', 'Y')
+                prod, serv)
     clean_csv(csv_file)
 
 # def prep_staging():
