@@ -209,7 +209,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
             try:
                 csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
             except subprocess.CalledProcessError as e:
-                print(f"Command failed with error code {e.returncode}: {e.csv_variable.decode('utf-8')}")
+                print(f"Command failed with error code {e.returncode}")
             print(csv_video)
             split_video = csv_video.split(',')
             writer.writerow(split_video)
@@ -222,7 +222,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
             try:
                 csv_audio = subprocess.check_output(cmd_audio).decode(sys.stdout.encoding)
             except subprocess.CalledProcessError as e:
-                print(f"Command failed with error code {e.returncode}: {e.csv_variable.decode('utf-8')}")
+                print(f"Command failed with error code {e.returncode}")
             print(csv_audio)
             split_audio = csv_audio.split(',')
             writer.writerow(split_audio)
@@ -235,7 +235,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
             try:
                 csv_checksum = subprocess.check_output(cmd_checksum).decode(sys.stdout.encoding)
             except subprocess.CalledProcessError as e:
-                print(f"Command failed with error code {e.returncode}: {e.csv_variable.decode('utf-8')}")
+                print(f"Command failed with error code {e.returncode}")
             print(csv_checksum)
             split_checksum = csv_checksum.split(',')
             writer.writerow(split_checksum)
@@ -243,17 +243,16 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
 
 def get_prepend():
     while True:
-        header = input('\n\n**** enter string to be prepended to filenames or type skip to skip this step\n\n')
+        header = input('\n\n**** enter string to be prepended to filenames or type skip to skip this step\n\n').lower()
         
-        if header in ('SKIP', 'skip', 'Skip'):
+        if header == 'skip':
             skip_yn = ask_yes_no('skip this step?')
             if skip_yn == 'Y':
-                header == 'skip'
                 print('skipping')
                 return header
             else:
                 print('try again')
-        if header != '' and header not in ('SKIP', 'skip', 'Skip'):
+        if header != '' and header != 'skip':
             skip_yn = 'N'
             proceed_yn = ask_yes_no(f'you entered: "{header}"\n is this entered correctly?')
             if proceed_yn == 'Y':
@@ -290,18 +289,17 @@ def write_prepend(header, destination, video_list, audio_list, checksum_list):
 
 def get_middle():
     while True:
-        middle_orig = input('\n\n**** enter string to be replaced in filenames or type skip to skip this step\n\n')
+        middle_orig = input('\n\n**** enter string to be replaced in filenames or type skip to skip this step\n\n').lower()
         
-        if middle_orig in ('SKIP', 'skip', 'Skip'):
+        if middle_orig == 'skip':
             skip_yn = ask_yes_no('skip this step?')
             if skip_yn == 'Y':
-                middle_orig == 'skip'
                 middle_new = "zip"
                 print('skipping')
                 return middle_orig, middle_new
             else:
                 print('try again')
-        if middle_orig != '' and middle_orig not in ('SKIP', 'skip', 'Skip'):
+        if middle_orig != '' and middle_orig != 'skip':
             skip_yn = 'N'
             middle_new = input('\n\n**** enter replacement string\n\n')
             proceed_yn = ask_yes_no(f'replace "{middle_orig}" with "{middle_new}"\n is this entered correctly?')
@@ -348,7 +346,7 @@ def get_suffix():
             print('skipping this step')
             return file_ext, suffix
         if file_ext != '':
-            suffix = None
+            suffix = ''
             while suffix not in ['ARCH', 'PROD', 'SERV']:
                 suffix = input('\n\n**** choose suffix to add: ARCH, PROD, or SERV\n\n').upper()
                 if suffix == 'ARCH':
@@ -427,7 +425,6 @@ def arrange_csv(csv_file, header_list, prod, serv):
     else:
         df['serv_slice'] = ''
          
-    arch_df = df['preservation_master_file'].str.contains('ARCH', na=False)
     df['master_file_note'] = df['master_file_note'].str.replace(r'[\n]+', '', regex=True)
     
     if prod == 'Y' or serv == 'Y':
@@ -513,6 +510,8 @@ def main(args_):
                         break
                 else:
                     break
+    df_log = pd.read_csv(csv_file)
+    df_log.to_csv('/Users/nraogra/Desktop/Carlos/log.csv', index=False, header=True)
     arrange_csv(csv_file,
                 ['type', 'fileset_label', 'pcdm_use',
                  'preservation_master_file', 'extent',
