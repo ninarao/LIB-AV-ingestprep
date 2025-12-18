@@ -392,7 +392,7 @@ def write_suffix(file_ext, suffix, destination):
     else:
         print('exiting')
 
-def arrange_csv(csv_file, header_list):
+def arrange_csv(csv_file, header_list, prod, serv):
     df = pd.read_csv(csv_file, header=None)
     df.columns = header_list
     df.to_csv(csv_file, index=False, header=True)
@@ -466,8 +466,13 @@ def arrange_csv(csv_file, header_list):
         df.loc[new_row, 'service_file_note'] = sfn_list
     
     df.to_csv(csv_file, index=False, header=True)
+    
+def clean_csv(csv_file):
+    df = pd.read_csv(csv_file)
     df_dropped = df.drop(columns=['inter_slice', 'serv_slice', 'master_slice'], errors='ignore')
     df_dropped.to_csv(csv_file, index=False, header=True)
+    df_cleaned = df_dropped.dropna(subset=['preservation_master_file', 'intermediate_file', 'service_file'], how='all')
+    df_cleaned.to_csv(csv_file, index=False, header=True)
     
 
 def main(args_):
@@ -485,8 +490,6 @@ def main(args_):
     audio_list = get_audio_files(destination)
     checksum_list = get_checksum_files(destination)
     get_mediainfo(video_list, audio_list, checksum_list, csv_file)
-    current_working_directory = os.getcwd()
-    print(current_working_directory)
     header = get_prepend()
     if header != '' and header != 'skip':
         write_prepend(header, destination, video_list, audio_list, checksum_list)
@@ -510,9 +513,12 @@ def main(args_):
                         break
                 else:
                     break
-    arrange_csv('/Users/nraogra/Desktop/Carlos/Object_CSV_C_2025_12_10_test.csv',
-                   ['type', 'fileset_label', 'pcdm_use', 'preservation_master_file', 'extent', 'technical_note',
-                    'master_file_note'], 'N', 'Y')
+    arrange_csv(csv_file,
+                ['type', 'fileset_label', 'pcdm_use',
+                 'preservation_master_file', 'extent',
+                 'technical_note', 'master_file_note'],
+                'N', 'Y')
+    clean_csv(csv_file)
 
 # def prep_staging():
 # #   prepare staging directory
