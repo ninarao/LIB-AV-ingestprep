@@ -107,7 +107,7 @@ def checksum_match(source, destination):
     print(cmd_checkmatch)
     subprocess.call(cmd_checkmatch)
     
-def move_to_root(maindir):
+def move_to_top(maindir):
     os.chdir(maindir)      
     subdirs = os.listdir(maindir)
     subs=[]
@@ -390,6 +390,25 @@ def write_suffix(file_ext, suffix, destination):
     else:
         print('exiting')
 
+def rename_stage(destination):
+    os.chdir(destination)
+    print('\n\nstaging directory should be named in this format: MSSXXXX_YYYY_MM_DD \
+            \n\nXXXX = collection number \
+            \n\n**for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed**')
+    old_path, old_name = os.path.split(destination)
+    new_name = input('\n\n**** enter new name for directory:     ').upper()
+    rename = ask_yes_no(f'rename directory from {old_name} to {new_name}?')
+    if rename == 'N':
+        print('skipping rename')
+    elif rename == 'Y':
+        new_dest = os.path.join(old_path, new_name)
+        print(f'renaming {destination} to {new_dest}')
+        try:
+            os.rename(destination, new_dest)
+            return new_dest
+        except NotADirectoryError:
+            print('not a directory')
+
 def arrange_csv(csv_file, header_list, prod, serv):
     df = pd.read_csv(csv_file, header=None)
     df.columns = header_list
@@ -485,7 +504,7 @@ def main(args_):
         checksum_match(source, destination)
     else:
         pass
-    move_to_root(destination)
+    move_to_top(destination)
     video_list = get_video_files(destination)
     audio_list = get_audio_files(destination)
     checksum_list = get_checksum_files(destination)
@@ -543,6 +562,12 @@ def main(args_):
                         break
                 else:
                     break
+    old_path, old_name = os.path.split(destination)
+    print(f'\n\nstaging directory current name: {old_name}')
+    stage_name = ask_yes_no('rename the staging directory to MSSXXXX_YYYY_MM_DD format?')
+    if stage_name == 'Y':
+        destination = rename_stage(destination)
+        
     df_log = pd.read_csv(csv_file)
     df_log.to_csv(csv_log, index=False, header=True)
     if 'PROD' in suffixes:
@@ -560,12 +585,7 @@ def main(args_):
                 prod, serv)
     clean_csv(csv_file)
 
-# def prep_staging():
-# #   prepare staging directory
-# #       upload metadata csv to staging directory
-# #       all files should be in staging directory, with no subdirectories (all files at the same level)
-# #       staging directory should be named in this format: MSSXXXX_YYYY_MM_DD
-# #           (XXXX = collection number; for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
+
 # #   prepare destination directory (requires static IP, so can only be done from front audio workstation)
 # #       connect to LIB-AV server
 # #       check if a directory already exists for the collection (or series/record group for EUA, Oxford, and Pitts)
