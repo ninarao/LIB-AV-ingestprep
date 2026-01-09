@@ -1,2 +1,4 @@
 # LIB-AV-ingestprep
 A python script that automates digital preservation workflows in Emory Libraries Media Preservation.  The script facilitates pre-ingest tasks for audiovisual material intended for the Interim Storage Repository (LIB-AV): copying files to a staging directory, getting mediainfo metadata from files, moving files to the top level of the directory, renaming files according to the LIB-AV naming convention, and preparing and arranging the ingest csv.
+
+Bits and pieces adapted from [IFIscripts](https://github.com/Irish-Film-Institute/IFIscripts).
