@@ -1,4 +1,7 @@
 # LIB-AV-ingestprep
+
+** work in progress **
+
 A python script that automates digital preservation workflows in Emory Libraries Media Preservation.  
 
 The script performs the following pre-ingest tasks for audiovisual material intended for the Interim Storage Repository (LIB-AV): 
