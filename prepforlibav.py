@@ -243,7 +243,7 @@ def get_mediainfo(video_list, audio_list, checksum_list, csv_file):
 
 def get_prepend():
     while True:
-        header = input('\n\n**** enter string to be prepended to filenames or type skip to skip this step\n\n').lower()
+        header = input('\n\n**** enter string to be prepended to filenames or type skip to skip this step\n\n')
         
         if header == 'skip':
             skip_yn = ask_yes_no('skip this step?')
@@ -289,7 +289,7 @@ def write_prepend(header, destination, video_list, audio_list, checksum_list):
 
 def get_middle():
     while True:
-        middle_orig = input('\n\n**** enter string to be replaced in filenames or type skip to skip this step\n\n').lower()
+        middle_orig = input('\n\n**** enter string to be replaced in filenames or type skip to skip this step\n\n')
         
         if middle_orig == 'skip':
             skip_yn = ask_yes_no('skip this step?')
