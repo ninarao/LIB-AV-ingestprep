@@ -13,8 +13,7 @@ import pandas as pd
 
 sys.argv = [
     'prepforlibav_menu.py',
-    '/Users/nraogra/Desktop/CARLOS_1/',
-    '/Users/nraogra/Desktop/Carlos'
+    '/Users/nraogra/Desktop/Pitts/RG0070_2026_01_15'
     ]
 
 def setup(args_):
@@ -43,56 +42,52 @@ def ask_yes_no(question):
             return 'N'
 
 def copy_to_stage(destination):
-    while True:
-        source = input('\n\n**** enter directory to copy from (with full path):     ')
-        if not os.path.isdir(source):
-            print(f"no directory {source} exists, try again or type Q to quit")
-        if source in ['Q', 'q']:
-            print(' - Returning to main menu')
-            break
-    if not os.path.isdir(destination):
-        print(f"no directory {destination} exists, making directory")
-        os.makedirs(destination)
+    source = input('\n\n**** enter directory to copy from (with full path):     ')
+    if not os.path.isdir(source):
+        print(f"no directory {source} exists, returning to main menu")
+        return
     else:
-        pass
-    source = os.path.abspath(source)
-    sourceContents = source + '/'
-    cmd_dryrun = [
-        'rsync', '--dry-run',
-        '-ah', '-vv',
-        '--exclude=.*', '--exclude=.*/',
-        '--progress', '--stats',
-        sourceContents, destination
-    ]
-    print(f"dry run of copy to stage command: {cmd_dryrun}")
-    subprocess.call(cmd_dryrun)
-    
-    run_copy = ask_yes_no('continue with copy to staging drive?')
-    
-    if run_copy == 'Y':
-        cmd_copy = [
-            'rsync', 
+        if not os.path.isdir(destination):
+            print(f"no directory {destination} exists, making directory")
+            os.makedirs(destination)
+        source = os.path.abspath(source)
+        sourceContents = source + '/'
+        cmd_dryrun = [
+            'rsync', '--dry-run',
             '-ah', '-vv',
             '--exclude=.*', '--exclude=.*/',
             '--progress', '--stats',
             sourceContents, destination
         ]
-        print(cmd_copy)
-        subprocess.call(cmd_copy)
-        print('verifying checksums match...')
-        sourceContents = source + '/'
-        cmd_checkmatch = [
-            'rsync',
-            '--dry-run',
-            '--checksum',
-            '-ah', '-vv',
-            '--progress',
-            sourceContents, destination
-        ]
-        print(cmd_checkmatch)
-        subprocess.call(cmd_checkmatch)
-    else:
-        print('skipping copy and returning to main menu')
+        print(f"dry run of copy to stage command: {cmd_dryrun}")
+        subprocess.call(cmd_dryrun)
+        run_copy = ask_yes_no('continue with copy to staging drive?')
+        if run_copy == 'Y':
+            cmd_copy = [
+                'rsync', 
+                '-ah', '-vv',
+                '--exclude=.*', '--exclude=.*/',
+                '--progress', '--stats',
+                sourceContents, destination
+            ]
+            print(cmd_copy)
+            subprocess.call(cmd_copy)
+            print('verifying checksums match...')
+            sourceContents = source + '/'
+            cmd_checkmatch = [
+                'rsync',
+                '--dry-run',
+                '--checksum',
+                '-ah', '-vv',
+                '--progress',
+                sourceContents, destination
+            ]
+            print(cmd_checkmatch)
+            subprocess.call(cmd_checkmatch)
+            return
+        else:
+            print('skipping copy and returning to main menu')
+            return
 
 def get_video_files(destination):
     video_list = []
@@ -130,6 +125,13 @@ def get_checksum_files(destination):
         checksum_list = [destination]
     return checksum_list
 
+def get_all_files(destination):
+    video_list = get_video_files(destination)
+    audio_list = get_audio_files(destination)
+    checksum_list = get_checksum_files(destination)
+    all_files = video_list + audio_list + checksum_list
+    return all_files
+
 def rename_menu(destination):
     print(f'staging directory: {destination}')
     print('\nWhat would you like to do?')
@@ -140,90 +142,83 @@ def rename_menu(destination):
     print('\n')
     
 def rename_files(destination):
-    video_list = get_video_files(destination)
-    audio_list = get_audio_files(destination)
-    checksum_list = get_checksum_files(destination)
-    all_files = video_list + audio_list + checksum_list
     while True:
         rename_menu(destination)
         choice = input('Enter your option: ').strip().upper()
         if choice == '1':
-            prepend(destination, all_files)
+            prepend(destination)
         elif choice == '2':
-            middle(destination, all_files)
+            middle(destination)
         elif choice == '3':
-            suffix(destination, all_files)
+            suffix(destination)
         elif choice in ['Q', 'q']:
             print(' - Returning to main menu')
             break
         else:
             print(' - Incorrect input. Please enter 1, 2, 3, or Q')
 
-def prepend(destination, all_files):
+def prepend(destination):
     while True:
+        all_files = get_all_files(destination)
         header = input('\n**** enter string to be prepended to filenames or type Q to quit to menu\n\n')
         if header in ['Q', 'q']:
             print('returning to menu')
             break
         else:
-            proceed_yn = ask_yes_no(f'you entered: "{header}"\n is this entered correctly?')
+            print(f'you entered: "{header}"')
+            os.chdir(destination)
+            print('building file list...')
+            for file in all_files:
+                justName = Path(file).stem
+                extension = Path(file).suffix
+                prepended_name = header + '_' + justName + extension
+                print(f'{justName}{extension} to {prepended_name}')
+            proceed_yn = ask_yes_no('proceed with renaming?')
             if proceed_yn == 'Y':
-                os.chdir(destination)
-                print('building file list...')
                 for file in all_files:
                     justName = Path(file).stem
                     extension = Path(file).suffix
                     prepended_name = header + '_' + justName + extension
-                    print(f'{justName}{extension} to {prepended_name}')
-                proceed_yn = ask_yes_no('proceed with renaming?')
-                if proceed_yn == 'Y':
-                    for file in all_files:
-                        justName = Path(file).stem
-                        extension = Path(file).suffix
-                        prepended_name = header + '_' + justName + extension
-                        print(prepended_name)
-                        os.rename(file, prepended_name)
-                    break
-                else:
-                    print('exiting')
-                    break
+                    print(prepended_name)
+                    os.rename(file, prepended_name)
+                break
             else:
                 print('\ntry again')
 
-def middle(destination, all_files):
+def middle(destination):
     while True:
+        all_files = get_all_files(destination)
         middle_orig = input('\n**** enter string to be replaced in filenames or type Q to quit to menu\n\n')
         if middle_orig in ['Q', 'q']:
             print('returning to menu')
             break
         else:
             middle_new = input('\n**** enter replacement string\n')
-            proceed_yn = ask_yes_no(f'replace "{middle_orig}" with "{middle_new}"\n is this entered correctly?')
+            print(f'replace "{middle_orig}" with "{middle_new}"')
+            os.chdir(destination)
+            print('building file list...')
+            for file in all_files:
+                justName = Path(file).stem
+                extension = Path(file).suffix
+                if middle_orig in justName:
+                    middle_name = justName.replace(middle_orig, middle_new, 1) + extension
+                    print(f'{justName}{extension} to {middle_name}')
+            proceed_yn = ask_yes_no('proceed with renaming?')
             if proceed_yn == 'Y':
-                os.chdir(destination)
-                print('building file list...')
                 for file in all_files:
                     justName = Path(file).stem
                     extension = Path(file).suffix
-                    middle_name = justName.replace(middle_orig, middle_new, 1) + extension
-                    print(f'{justName}{extension} to {middle_name}')
-                proceed_yn = ask_yes_no('proceed with renaming?')
-                if proceed_yn == 'Y':
-                    for file in all_files:
-                        justName = Path(file).stem
-                        extension = Path(file).suffix
+                    if middle_orig in justName:
                         middle_name = justName.replace(middle_orig, middle_new, 1) + extension
                         print(middle_name)
                         os.rename(file, middle_name)
-                    break
-                else:
-                    print('exiting')
-                    break
+                break
             else:
                 print('\ntry again')
         
-def suffix(destination, all_files):
+def suffix(destination):
     while True:
+        all_files = get_all_files(destination)
         suffix = ''
         file_ext = input('\n**** enter extension of files or type Q to quit to menu\n\n')
         if file_ext in ['Q', 'q']:
@@ -233,43 +228,37 @@ def suffix(destination, all_files):
             while suffix not in ['ARCH', 'PROD', 'SERV']:
                 suffix = input('\n\n**** choose suffix to add: ARCH, PROD, or SERV\n\n').upper()
                 if suffix == 'ARCH':
-                    print('you chose ARCH')
                     suffix = "ARCH"
                     break
                 if suffix == 'PROD':
-                    print('you chose PROD')
                     suffix = "PROD"
                     break
                 if suffix == 'SERV':
-                    print('you chose SERV')
                     suffix = "SERV"
                     break
                 else:
                     suffix = ''
                     print('\n**** invalid input.')
-            proceed_yn = ask_yes_no(f'add "_{suffix}" to files ending in ".{file_ext}"?')
+            print(f'add "_{suffix}" to files ending in ".{file_ext}"')
+            os.chdir(destination)
+            print('building file list...')
+            for file in glob.glob(f"*.{file_ext}"):
+                justName = Path(file).stem
+                extension = Path(file).suffix
+                suffix_name = justName + '_' + suffix + extension
+                print(f'{justName}{extension} to {suffix_name}')    
+            proceed_yn = ask_yes_no('proceed with renaming?')
             if proceed_yn == 'Y':
-                os.chdir(destination)
-                print('building file list...')
                 for file in glob.glob(f"*.{file_ext}"):
                     justName = Path(file).stem
                     extension = Path(file).suffix
                     suffix_name = justName + '_' + suffix + extension
-                    print(f'{justName}{extension} to {suffix_name}')    
-                proceed_yn = ask_yes_no('proceed with renaming?')
-                if proceed_yn == 'Y':
-                    for file in glob.glob(f"*.{file_ext}"):
-                        justName = Path(file).stem
-                        extension = Path(file).suffix
-                        suffix_name = justName + '_' + suffix + extension
-                        print(suffix_name)
-                        os.rename(file, suffix_name)
-                    return file_ext, suffix
-                else:
-                    print('exiting')
-                    return file_ext, suffix
+                    print(suffix_name)
+                    os.rename(file, suffix_name)
+                return file_ext, suffix
             else:
                 print('\ntry again')
+                return file_ext, suffix
 
 def rename_stage(destination):
     os.chdir(destination)
@@ -340,7 +329,6 @@ def get_mediainfo(destination):
     video_list = get_video_files(destination)
     audio_list = get_audio_files(destination)
     checksum_list = get_checksum_files(destination)
-    all_files = video_list + audio_list + checksum_list
     #get csv location or create
     csv_location = input('\n\n**** enter csv location or leave blank to create csv:     ')
     if csv_location != '':
@@ -412,14 +400,14 @@ def arrange_csv(csv_file, header_list):
         print('3. SERV')
         valid_choices = [1, 2, 3]
         answer = input('enter numbers separated by spaces: ').split()
-        for char in answer_list:
+        for char in answer:
             if char not in valid_choices:
                 print(f'invalid input: {answer}\n try again or type Q to quit.')
-            elif char == 2:
+            elif char == '2':
                 prod = 'Y'
-            elif char == 3:
-                serv = 'Y'
-            elif char in in ['Q', 'q']:
+            elif char == '3':
+                serv == 'Y'
+            elif char in ['Q', 'q']:
                 print(' - Returning to main menu')
                 break
             else:
