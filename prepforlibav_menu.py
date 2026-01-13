@@ -21,9 +21,6 @@ def setup(args_):
     parser = argparse.ArgumentParser(
         description='test description')
     parser.add_argument(
-        'source', help='Source directory'
-    )
-    parser.add_argument(
         'destination',
         help='Staging directory'
     )
@@ -45,13 +42,20 @@ def ask_yes_no(question):
         elif answer in ('N,' 'n'):
             return 'N'
 
-def copy_to_stage(source, destination):
-    #copy source files to staging drive
+def copy_to_stage(destination):
+    while True:
+        source = input('\n\n**** enter directory to copy from (with full path):     ')
+        if not os.path.isdir(source):
+            print(f"no directory {source} exists, try again or type Q to quit")
+        if source in ['Q', 'q']:
+            print(' - Returning to main menu')
+            break
     if not os.path.isdir(destination):
         print(f"no directory {destination} exists, making directory")
         os.makedirs(destination)
     else:
         pass
+    source = os.path.abspath(source)
     sourceContents = source + '/'
     cmd_dryrun = [
         'rsync', '--dry-run',
@@ -392,101 +396,104 @@ def get_mediainfo(destination):
             split_checksum = csv_checksum.split(',')
             writer.writerow(split_checksum)
         f.close()
+    csv_log_name = name + '_log' + extension
+    csv_log = os.path.join(csv_path, csv_log_name)
+    df_log = pd.read_csv(csv_file)
+    df_log.to_csv(csv_log, index=False, header=True)
     return csv_file
 
-def arrange_csv(csv_file, header_list, prod, serv):
+def arrange_csv(csv_file, header_list):
+    prod = 'N'
+    serv = 'N'
     while True:
         print('which file types are in this batch? choose all that apply or type Q to quit.')
         print('1. ARCH')
         print('2. PROD')
         print('3. SERV')
         valid_choices = [1, 2, 3]
-        prod == 'N'
-        serv == 'N'
         answer = input('enter numbers separated by spaces: ').split()
         for char in answer_list:
             if char not in valid_choices:
                 print(f'invalid input: {answer}\n try again or type Q to quit.')
             elif char == 2:
-                prod == 'Y'
+                prod = 'Y'
             elif char == 3:
-                serv == 'Y'
+                serv = 'Y'
             elif char in in ['Q', 'q']:
                 print(' - Returning to main menu')
                 break
             else:
-                
-                
-        df = pd.read_csv(csv_file, header=None)
-        df.columns = header_list
-        df.to_csv(csv_file, index=False, header=True)
-        df.insert(4, 'intermediate_file', '')
-        df.insert(5, 'service_file', '')
-        df.insert(8, 'transfer_engineer', '')
-        df.insert(9, 'date_digitized', '')
-        df.insert(10, 'staff_notes', '')
-        df.insert(12, 'intermediate_file_note', '')
-        df.insert(13, 'service_file_note', '')
-        df.insert(14, 'emory_ark', '')
-        df.insert(15, 'emory_ark2', '')
-        
-        if prod == 'Y':
-            prod_df = df['preservation_master_file'].str.contains('PROD', na=False)
-            df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
-            df.loc[prod_df, 'preservation_master_file'] = ''
-            df.loc[prod_df, 'intermediate_file_note'] = df.loc[prod_df, 'master_file_note']
-            df.loc[prod_df, 'master_file_note'] = ''
-            df['intermediate_file_note'] = df['intermediate_file_note'].str.replace(r'[\n]+', '', regex=True)
-            df['inter_slice'] = df['intermediate_file'].str[:-8]
-        else:
-            df['inter_slice'] = ''
-        if serv == 'Y':
-            serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
-            df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
-            df.loc[serv_df, 'preservation_master_file'] = ''
-            df.loc[serv_df, 'service_file_note'] = df.loc[serv_df, 'master_file_note']
-            df.loc[serv_df, 'master_file_note'] = ''
-            df['service_file_note'] = df['service_file_note'].str.replace(r'[\n]+', '', regex=True)
-            df['serv_slice'] = df['service_file'].str[:-8]
-        else:
-            df['serv_slice'] = ''
-             
-        df['master_file_note'] = df['master_file_note'].str.replace(r'[\n]+', '', regex=True)
-        
-        if prod == 'Y' or serv == 'Y':
-            df['master_slice'] = df['preservation_master_file'].str[:-8]
+                break
+    df = pd.read_csv(csv_file, header=None)
+    df.columns = header_list
+    df.to_csv(csv_file, index=False, header=True)
+    df.insert(4, 'intermediate_file', '')
+    df.insert(5, 'service_file', '')
+    df.insert(8, 'transfer_engineer', '')
+    df.insert(9, 'date_digitized', '')
+    df.insert(10, 'staff_notes', '')
+    df.insert(12, 'intermediate_file_note', '')
+    df.insert(13, 'service_file_note', '')
+    df.insert(14, 'emory_ark', '')
+    df.insert(15, 'emory_ark2', '')
+    
+    if prod == 'Y':
+        prod_df = df['preservation_master_file'].str.contains('PROD', na=False)
+        df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
+        df.loc[prod_df, 'preservation_master_file'] = ''
+        df.loc[prod_df, 'intermediate_file_note'] = df.loc[prod_df, 'master_file_note']
+        df.loc[prod_df, 'master_file_note'] = ''
+        df['intermediate_file_note'] = df['intermediate_file_note'].str.replace(r'[\n]+', '', regex=True)
+        df['inter_slice'] = df['intermediate_file'].str[:-8]
+    else:
+        df['inter_slice'] = ''
+    if serv == 'Y':
+        serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
+        df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
+        df.loc[serv_df, 'preservation_master_file'] = ''
+        df.loc[serv_df, 'service_file_note'] = df.loc[serv_df, 'master_file_note']
+        df.loc[serv_df, 'master_file_note'] = ''
+        df['service_file_note'] = df['service_file_note'].str.replace(r'[\n]+', '', regex=True)
+        df['serv_slice'] = df['service_file'].str[:-8]
+    else:
+        df['serv_slice'] = ''
+         
+    df['master_file_note'] = df['master_file_note'].str.replace(r'[\n]+', '', regex=True)
+    
+    if prod == 'Y' or serv == 'Y':
+        df['master_slice'] = df['preservation_master_file'].str[:-8]
 
-        if prod == 'Y':
-            merged_df = pd.merge(df, df[['master_slice']].reset_index(),
-                         left_on='inter_slice', right_on='master_slice',
-                         suffixes=('_int', '_ma'), how='left')
-            # print(merged_df[['inter_slice', 'master_slice_int', 'index']])
-            merged_df = merged_df.rename(columns={'index': 'pres_index'})
-            # print(merged_df[['inter_slice', 'master_slice_int', 'pres_index']])
-            keep_rows = merged_df.dropna(subset=['master_slice_ma'])
-            
-            intf_list = keep_rows['intermediate_file'].to_list()
-            intfn_list = keep_rows['intermediate_file_note'].to_list()
-            new_row = keep_rows['pres_index'].to_list()
-
-            df.loc[new_row, 'intermediate_file'] = intf_list
-            df.loc[new_row, 'intermediate_file_note'] = intfn_list
-
-        if serv == 'Y':
-            merged_df = pd.merge(df, df[['master_slice']].reset_index(),
-                         left_on='serv_slice', right_on='master_slice',
-                         suffixes=('_serv', '_ma'), how='left')
-            # print(merged_df[['serv_slice', 'master_slice_serv', 'index']])
-            merged_df = merged_df.rename(columns={'index': 'pres_index'})
-            # print(merged_df[['serv_slice', 'master_slice_serv', 'pres_index']])
-            keep_rows = merged_df.dropna(subset=['master_slice_ma'])
-            sf_list = keep_rows['service_file'].to_list()
-            sfn_list = keep_rows['service_file_note'].to_list()
-            new_row = keep_rows['pres_index'].to_list()
-            df.loc[new_row, 'service_file'] = sf_list
-            df.loc[new_row, 'service_file_note'] = sfn_list
+    if prod == 'Y':
+        merged_df = pd.merge(df, df[['master_slice']].reset_index(),
+                     left_on='inter_slice', right_on='master_slice',
+                     suffixes=('_int', '_ma'), how='left')
+        # print(merged_df[['inter_slice', 'master_slice_int', 'index']])
+        merged_df = merged_df.rename(columns={'index': 'pres_index'})
+        # print(merged_df[['inter_slice', 'master_slice_int', 'pres_index']])
+        keep_rows = merged_df.dropna(subset=['master_slice_ma'])
         
-        df.to_csv(csv_file, index=False, header=True)
+        intf_list = keep_rows['intermediate_file'].to_list()
+        intfn_list = keep_rows['intermediate_file_note'].to_list()
+        new_row = keep_rows['pres_index'].to_list()
+
+        df.loc[new_row, 'intermediate_file'] = intf_list
+        df.loc[new_row, 'intermediate_file_note'] = intfn_list
+
+    if serv == 'Y':
+        merged_df = pd.merge(df, df[['master_slice']].reset_index(),
+                     left_on='serv_slice', right_on='master_slice',
+                     suffixes=('_serv', '_ma'), how='left')
+        # print(merged_df[['serv_slice', 'master_slice_serv', 'index']])
+        merged_df = merged_df.rename(columns={'index': 'pres_index'})
+        # print(merged_df[['serv_slice', 'master_slice_serv', 'pres_index']])
+        keep_rows = merged_df.dropna(subset=['master_slice_ma'])
+        sf_list = keep_rows['service_file'].to_list()
+        sfn_list = keep_rows['service_file_note'].to_list()
+        new_row = keep_rows['pres_index'].to_list()
+        df.loc[new_row, 'service_file'] = sf_list
+        df.loc[new_row, 'service_file_note'] = sfn_list
+    
+    df.to_csv(csv_file, index=False, header=True)
     
 def clean_csv(csv_file):
     df = pd.read_csv(csv_file)
@@ -495,8 +502,8 @@ def clean_csv(csv_file):
     df_cleaned = df_dropped.dropna(subset=['preservation_master_file', 'intermediate_file', 'service_file'], how='all')
     df_cleaned.to_csv(csv_file, index=False, header=True)
     
-def main_menu(source, destination):
-    print(f'source: {source}\nstaging directory: {destination}')
+def main_menu(destination):
+    print(f'staging directory: {destination}')
     print('\nWhat would you like to do?')
     print('1. Copy files to staging directory')
     print('2. Rename files')
@@ -507,17 +514,16 @@ def main_menu(source, destination):
 
 def main(args_):
     args = setup(args_)
-    source = os.path.abspath(args.source)
     stage_dir = ''
     while True:
         if stage_dir != '':
             destination = new_dest
         else:
             destination = args.destination
-        main_menu(source, destination)
+        main_menu(destination)
         choice = input('\nEnter your option: ').strip().upper()
         if choice == '1':
-            copy_to_stage(source, destination)
+            copy_to_stage(destination)
         elif choice == '2':
             rename_files(destination)
         elif choice == '3':
@@ -533,8 +539,7 @@ def main(args_):
             arrange_csv(csv_file,
                 ['type', 'fileset_label', 'pcdm_use',
                  'preservation_master_file', 'extent',
-                 'technical_note', 'master_file_note'],
-                prod, serv)
+                 'technical_note', 'master_file_note'])
             clean_csv(csv_file)
         elif choice == 'Q':
             print(' - Exiting program. Goodbye!')
@@ -542,33 +547,11 @@ def main(args_):
         else:
             print(' - Incorrect input. Please enter 1, 2, 3, 4, 5, or Q')
 
-    
-    csv_file = os.path.abspath(args.csv_location)
-    csv_basename = os.path.basename(csv_file)
-    csv_path = os.path.dirname(csv_file)
-    name, extension = os.path.splitext(csv_basename)
-    csv_log_name = name + '_log' + extension
-    csv_log = os.path.join(csv_path, csv_log_name)
-
-
-    df_log = pd.read_csv(csv_file)
-    df_log.to_csv(csv_log, index=False, header=True)
-    if 'PROD' in suffixes:
-        prod = 'Y'
-    else:
-        prod = 'N'
-    if 'SERV' in suffixes:
-        serv = 'Y'
-    else:
-        serv = 'N'
-
-
-# #   prepare destination directory (requires static IP, so can only be done from front audio workstation)
-# #       connect to LIB-AV server
+# #   prepare destination directory
+# #       connect to LIB-AV server (requires static IP, so can only be done from front audio workstation)
 # #       check if a directory already exists for the collection (or series/record group for EUA, Oxford, and Pitts)
 # #       if it doesn't, under the directory for the appropriate library, create a directory for the collection:
 # #           ex: MSS1256 (for EUA, Oxford, and Pitts use SER or RG instead of MSS as needed)
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])
