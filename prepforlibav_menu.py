@@ -342,18 +342,40 @@ def get_mediainfo(destination):
     name, extension = os.path.splitext(csv_basename)
     # write mediainfo output to csv
     print(csv_file)
-    with open(csv_file, 'a', encoding='utf-8', newline='') as f:
+    with open(csv_file, 'w', encoding='utf-8', newline='') as f:
         writer=csv.writer(f)
         for file in video_list:
-            cmd_video = [
+            cmd_vid_trk = [
                 'mediainfo',
-                '--Output=General;fileset,Video,Primary Content,%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String% \nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
-                file]
+                '--Output=General;%VideoCount%',
+                file
+                ]
+            print(cmd_vid_trk)
             try:
-                csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
+                vid_check = subprocess.check_output(cmd_vid_trk).decode(sys.stdout.encoding)
             except subprocess.CalledProcessError as e:
                 print(f"Command failed with error code {e.returncode}")
-            print(csv_video)
+            if vid_check.strip() == '1':
+                print('true')
+                cmd_video = [
+                    'mediainfo',
+                    '--Output=General;fileset,Video,Primary Content,%FileNameExtension%,\nVideo;%Duration/String4%,%DisplayAspectRatio/String% DAR %FrameRate% FPS,%Format% %Width%x%Height/String% \nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
+                    file]
+                try:
+                    csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
+                except subprocess.CalledProcessError as e:
+                    print(f"Command failed with error code {e.returncode}")
+                print(csv_video)
+            else:
+                cmd_video = [
+                    'mediainfo',
+                    '--Output=General;fileset,Video,Primary Content,%FileNameExtension%,%Duration/String3%,,\nAudio;%Format% %SamplingRate/String% %BitDepth/String%',
+                    file]
+                try:
+                    csv_video = subprocess.check_output(cmd_video).decode(sys.stdout.encoding)
+                except subprocess.CalledProcessError as e:
+                    print(f"Command failed with error code {e.returncode}")
+                print(csv_video)
             split_video = csv_video.split(',')
             writer.writerow(split_video)
             
@@ -385,7 +407,7 @@ def get_mediainfo(destination):
         f.close()
     csv_log_name = name + '_log' + extension
     csv_log = os.path.join(csv_path, csv_log_name)
-    df_log = pd.read_csv(csv_file, header=None, names=range(9))
+    df_log = pd.read_csv(csv_file, header=None, names=range(7))
     df_log.to_csv(csv_log, index=False, header=False)
     return csv_file
 
@@ -416,8 +438,7 @@ def arrange_csv(csv_file, header_list):
             if prod == 'Y' or serv == 'Y':
                 break
     
-    df = pd.read_csv(csv_file, header=None)
-    df.columns = header_list
+    df = pd.read_csv(csv_file, header=None, names=header_list)
     df.to_csv(csv_file, index=False, header=True)
     df.insert(4, 'intermediate_file', '')
     df.insert(5, 'service_file', '')
