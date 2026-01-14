@@ -451,7 +451,7 @@ def arrange_csv(csv_file, header_list):
     df.insert(15, 'emory_ark2', '')
     
     if prod == 'Y':
-        prod_df = df['preservation_master_file'].str.contains('PROD', na=False)
+        prod_df = (df['preservation_master_file'].str.contains('PROD', na=False)) & (df['pcdm_use'].str.contains('Primary', na=False))
         df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
         df.loc[prod_df, 'preservation_master_file'] = ''
         df.loc[prod_df, 'intermediate_file_note'] = df.loc[prod_df, 'master_file_note']
@@ -461,7 +461,7 @@ def arrange_csv(csv_file, header_list):
     else:
         df['inter_slice'] = ''
     if serv == 'Y':
-        serv_df = df['preservation_master_file'].str.contains('SERV', na=False)
+        serv_df = (df['preservation_master_file'].str.contains('SERV', na=False)) & (df['pcdm_use'].str.contains('Primary', na=False))
         df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
         df.loc[serv_df, 'preservation_master_file'] = ''
         df.loc[serv_df, 'service_file_note'] = df.loc[serv_df, 'master_file_note']
