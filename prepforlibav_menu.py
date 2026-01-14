@@ -150,7 +150,7 @@ def rename_files(destination):
         elif choice == '2':
             middle(destination)
         elif choice == '3':
-            suffix(destination)
+            add_suffix(destination)
         elif choice in ['Q', 'q']:
             print(' - Returning to main menu')
             break
@@ -216,9 +216,8 @@ def middle(destination):
             else:
                 print('\ntry again')
         
-def suffix(destination):
+def add_suffix(destination):
     while True:
-        all_files = get_all_files(destination)
         suffix = ''
         file_ext = input('\n**** enter extension of files or type Q to quit to menu\n\n')
         if file_ext in ['Q', 'q']:
@@ -386,8 +385,8 @@ def get_mediainfo(destination):
         f.close()
     csv_log_name = name + '_log' + extension
     csv_log = os.path.join(csv_path, csv_log_name)
-    df_log = pd.read_csv(csv_file)
-    df_log.to_csv(csv_log, index=False, header=True)
+    df_log = pd.read_csv(csv_file, header=None, names=range(9))
+    df_log.to_csv(csv_log, index=False, header=False)
     return csv_file
 
 def arrange_csv(csv_file, header_list):
@@ -398,20 +397,25 @@ def arrange_csv(csv_file, header_list):
         print('1. ARCH')
         print('2. PROD')
         print('3. SERV')
-        valid_choices = [1, 2, 3]
+        valid_choices = ['1', '2', '3']
         answer = input('enter numbers separated by spaces: ').split()
-        for char in answer:
-            if char not in valid_choices:
-                print(f'invalid input: {answer}\n try again or type Q to quit.')
-            elif char == '2':
-                prod = 'Y'
-            elif char == '3':
-                serv == 'Y'
-            elif char in ['Q', 'q']:
-                print(' - Returning to main menu')
+        if 'Q' in answer or 'q' in answer:
+            print(' - Returning to main menu')
+            return
+        elif all(char == '1' for char in answer):
+            print('only arch files - no prod or serv files')
+            break
+        else:
+            for char in answer:
+                if char not in valid_choices:
+                    print(f'invalid input: {answer} try again')
+                elif char == '2':
+                    prod = 'Y'
+                elif char == '3':
+                    serv = 'Y'
+            if prod == 'Y' or serv == 'Y':
                 break
-            else:
-                break
+    
     df = pd.read_csv(csv_file, header=None)
     df.columns = header_list
     df.to_csv(csv_file, index=False, header=True)
