@@ -10,11 +10,10 @@ from pathlib import Path
 import shutil
 import pandas as pd
 
-
-sys.argv = [
-    'prepforlibav_menu.py',
-    '/Users/nraogra/Desktop/Pitts/RG0070_2026_01_15'
-    ]
+# sys.argv = [
+#     'prepforlibav.py',
+#     '/Users/nraogra/Desktop/Pitts/RG0070_2026_01_15'
+#     ]
 
 def setup(args_):
     parser = argparse.ArgumentParser(
@@ -328,7 +327,7 @@ def get_mediainfo(destination):
     video_list = get_video_files(destination)
     audio_list = get_audio_files(destination)
     checksum_list = get_checksum_files(destination)
-    #get csv location or create
+    
     csv_location = input('\n\n**** enter csv location or leave blank to create csv:     ')
     if csv_location != '':
         csv_file = os.path.abspath(csv_location)
@@ -340,7 +339,6 @@ def get_mediainfo(destination):
     csv_basename = os.path.basename(csv_file)
     csv_path = os.path.dirname(csv_file)
     name, extension = os.path.splitext(csv_basename)
-    # write mediainfo output to csv
     print(csv_file)
     with open(csv_file, 'w', encoding='utf-8', newline='') as f:
         writer=csv.writer(f)
@@ -412,32 +410,6 @@ def get_mediainfo(destination):
     return csv_file
 
 def arrange_csv(csv_file, header_list):
-    prod = 'N'
-    serv = 'N'
-    while True:
-        print('which file types are in this batch? choose all that apply or type Q to quit.')
-        print('1. ARCH')
-        print('2. PROD')
-        print('3. SERV')
-        valid_choices = ['1', '2', '3']
-        answer = input('enter numbers separated by spaces: ').split()
-        if 'Q' in answer or 'q' in answer:
-            print(' - Returning to main menu')
-            return
-        elif all(char == '1' for char in answer):
-            print('only arch files - no prod or serv files')
-            break
-        else:
-            for char in answer:
-                if char not in valid_choices:
-                    print(f'invalid input: {answer} try again')
-                elif char == '2':
-                    prod = 'Y'
-                elif char == '3':
-                    serv = 'Y'
-            if prod == 'Y' or serv == 'Y':
-                break
-    
     df = pd.read_csv(csv_file, header=None, names=header_list)
     df.to_csv(csv_file, index=False, header=True)
     df.insert(4, 'intermediate_file', '')
@@ -449,112 +421,100 @@ def arrange_csv(csv_file, header_list):
     df.insert(13, 'service_file_note', '')
     df.insert(14, 'emory_ark', '')
     df.insert(15, 'emory_ark2', '')
-    
-    if prod == 'Y':
-        prod_df = (df['preservation_master_file'].str.contains('PROD', na=False)) & (df['pcdm_use'].str.contains('Primary', na=False))
-        df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
-        df.loc[prod_df, 'preservation_master_file'] = ''
-        df.loc[prod_df, 'intermediate_file_note'] = df.loc[prod_df, 'master_file_note']
-        df.loc[prod_df, 'master_file_note'] = ''
-        df['intermediate_file_note'] = df['intermediate_file_note'].str.replace(r'[\n]+', '', regex=True)
-        df['inter_slice'] = df['intermediate_file'].str[:-8]
-    else:
-        df['inter_slice'] = ''
-    if serv == 'Y':
-        serv_df = (df['preservation_master_file'].str.contains('SERV', na=False)) & (df['pcdm_use'].str.contains('Primary', na=False))
-        df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
-        df.loc[serv_df, 'preservation_master_file'] = ''
-        df.loc[serv_df, 'service_file_note'] = df.loc[serv_df, 'master_file_note']
-        df.loc[serv_df, 'master_file_note'] = ''
-        df['service_file_note'] = df['service_file_note'].str.replace(r'[\n]+', '', regex=True)
-        df['serv_slice'] = df['service_file'].str[:-8]
-    else:
-        df['serv_slice'] = ''
-         
-    df['master_file_note'] = df['master_file_note'].str.replace(r'[\n]+', '', regex=True)
-    
-    if prod == 'Y' or serv == 'Y':
-        df['master_slice'] = df['preservation_master_file'].str[:-8]
-
-    if prod == 'Y':
-        merged_df = pd.merge(df, df[['master_slice']].reset_index(),
-                     left_on='inter_slice', right_on='master_slice',
-                     suffixes=('_int', '_ma'), how='left')
-        # print(merged_df[['inter_slice', 'master_slice_int', 'index']])
-        merged_df = merged_df.rename(columns={'index': 'pres_index'})
-        # print(merged_df[['inter_slice', 'master_slice_int', 'pres_index']])
-        keep_rows = merged_df.dropna(subset=['master_slice_ma'])
-        
-        intf_list = keep_rows['intermediate_file'].to_list()
-        intfn_list = keep_rows['intermediate_file_note'].to_list()
-        new_row = keep_rows['pres_index'].to_list()
-
-        df.loc[new_row, 'intermediate_file'] = intf_list
-        df.loc[new_row, 'intermediate_file_note'] = intfn_list
-
-    if serv == 'Y':
-        merged_df = pd.merge(df, df[['master_slice']].reset_index(),
-                     left_on='serv_slice', right_on='master_slice',
-                     suffixes=('_serv', '_ma'), how='left')
-        # print(merged_df[['serv_slice', 'master_slice_serv', 'index']])
-        merged_df = merged_df.rename(columns={'index': 'pres_index'})
-        # print(merged_df[['serv_slice', 'master_slice_serv', 'pres_index']])
-        keep_rows = merged_df.dropna(subset=['master_slice_ma'])
-        sf_list = keep_rows['service_file'].to_list()
-        sfn_list = keep_rows['service_file_note'].to_list()
-        new_row = keep_rows['pres_index'].to_list()
-        df.loc[new_row, 'service_file'] = sf_list
-        df.loc[new_row, 'service_file_note'] = sfn_list
-    
     df.to_csv(csv_file, index=False, header=True)
-    
-def clean_csv(csv_file):
     df = pd.read_csv(csv_file)
-    df_dropped = df.drop(columns=['inter_slice', 'serv_slice', 'master_slice'], errors='ignore')
-    df_dropped.to_csv(csv_file, index=False, header=True)
-    df_cleaned = df_dropped.dropna(subset=['preservation_master_file', 'intermediate_file', 'service_file'], how='all')
-    df_cleaned.to_csv(csv_file, index=False, header=True)
+    
+    serv_df = (df['preservation_master_file'].str.contains('SERV', na=False)) & (df['pcdm_use'].str.contains('Primary', na=False))
+    df['service_file'] = df['service_file'].astype(str)
+    df.loc[serv_df, 'service_file'] = df.loc[serv_df, 'preservation_master_file']
+    df.loc[serv_df, 'preservation_master_file'] = df.loc[serv_df, 'preservation_master_file'].str[:-9]
+    df['service_file_note'] = df['service_file_note'].astype(str)
+    df.loc[serv_df, 'service_file_note'] = df.loc[serv_df, 'master_file_note']
+    df.loc[serv_df, 'master_file_note'] = ''
+    df['service_file_note'] = df['service_file_note'].str.replace(r'[\n]+', '', regex=True)
+    df_sc = df[serv_df]
+    
+    prod_df = (df['preservation_master_file'].str.contains('PROD', na=False)) & (df['pcdm_use'].str.contains('Primary', na=False))
+    df['intermediate_file'] = df['intermediate_file'].astype(str)
+    df.loc[prod_df, 'intermediate_file'] = df.loc[prod_df, 'preservation_master_file']
+    df.loc[prod_df, 'preservation_master_file'] = df.loc[prod_df, 'preservation_master_file'].str[:-9]
+    df['intermediate_file_note'] = df['intermediate_file_note'].astype(str)
+    df.loc[prod_df, 'intermediate_file_note'] = df.loc[prod_df, 'master_file_note']
+    df.loc[prod_df, 'master_file_note'] = ''
+    df['intermediate_file_note'] = df['intermediate_file_note'].str.replace(r'[\n]+', '', regex=True)
+    df_pc = df[prod_df]    
+    
+    arch_df = (df['pcdm_use'].str.contains('Primary', na=False)) & (df['preservation_master_file'].str.contains('ARCH', na=False))
+    df['staff_notes'] = df['staff_notes'].astype(str)
+    df.loc[arch_df, 'staff_notes'] = df['preservation_master_file']
+    df.loc[arch_df, 'preservation_master_file'] = df.loc[arch_df, 'preservation_master_file'].str[:-9]
+    df_ac = df[arch_df]
 
-def val_csv(csv_file):
-    df = pd.read_csv(csv_file)
-    
+    merged_df = pd.merge(df_ac, df_sc[['preservation_master_file', 'fileset_label', 'extent', 'technical_note', 'service_file', 'service_file_note']], on='preservation_master_file', how='outer')
+    mergedd_df = pd.merge(merged_df, df_pc[['preservation_master_file', 'fileset_label', 'extent', 'technical_note', 'intermediate_file', 'intermediate_file_note']], on='preservation_master_file', how='outer')
+    mergedd_df['preservation_master_file'] = mergedd_df['staff_notes']
+    mergedd_df['service_file_x'] = mergedd_df['service_file_y']
+    mergedd_df['service_file_note_x'] = mergedd_df['service_file_note_y']
+    mergedd_df['intermediate_file_x'] = mergedd_df['intermediate_file_y']
+    mergedd_df['intermediate_file_note_x'] = mergedd_df['intermediate_file_note_y']
+    mergedd_df = mergedd_df.drop(columns=['fileset_label', 'extent', 'technical_note', 'service_file_y', 'intermediate_file_y', 'service_file_note_y', 'intermediate_file_note_y'])
+    mergedd_df = mergedd_df.rename(columns={'fileset_label_x': 'fileset_label'})
+    mergedd_df = mergedd_df.rename(columns={'extent_x': 'extent'})
+    mergedd_df = mergedd_df.rename(columns={'technical_note_x': 'technical_note'})
+    mergedd_df = mergedd_df.rename(columns={'service_file_x': 'service_file'})
+    mergedd_df = mergedd_df.rename(columns={'intermediate_file_x': 'intermediate_file'})
+    mergedd_df = mergedd_df.rename(columns={'service_file_note_x': 'service_file_note'})
+    mergedd_df = mergedd_df.rename(columns={'intermediate_file_note_x': 'intermediate_file_note'})
+    mergedd_df['staff_notes'] = pd.NA
+    mergedd_df['type'] = mergedd_df['type'].mask(pd.isnull(mergedd_df['type']), 'fileset') 
+    mergedd_df['pcdm_use'] = mergedd_df['pcdm_use'].mask(pd.isnull(mergedd_df['pcdm_use']), 'Primary Content') 
+    mergedd_df['fileset_label'] = mergedd_df['fileset_label'].fillna(mergedd_df['fileset_label_y'])
+    mergedd_df['extent'] = mergedd_df['extent'].fillna(mergedd_df['extent_y'])
+    mergedd_df['technical_note'] = mergedd_df['technical_note'].fillna(mergedd_df['technical_note_y'])
+    mergedd_df = mergedd_df.drop(columns=['fileset_label_y', 'extent_y', 'technical_note_y'])
+    mergedd_df.reset_index(drop=True, inplace=True)
+    mergedd_df.to_csv(csv_file, index=False, header=True)
+
     serv_val_df = (df['pcdm_use'].str.contains('Validation', na=False)) & (df['preservation_master_file'].str.contains('SERV', na=False))
     df['service_file_note'] = df['service_file_note'].astype(str)
     df.loc[serv_val_df, 'service_file_note'] = df['preservation_master_file']
+    df['service_file_note'] = df['service_file_note'].str.replace(r'[\n]+', '', regex=True)
     df.loc[serv_val_df, 'preservation_master_file'] = df.loc[serv_val_df, 'preservation_master_file'].str[:-9]
     df_s = df[serv_val_df]
-    
+
     prod_val_df = (df['pcdm_use'].str.contains('Validation', na=False)) & (df['preservation_master_file'].str.contains('PROD', na=False))
     df['intermediate_file_note'] = df['intermediate_file_note'].astype(str)
+    df['intermediate_file_note'] = df['intermediate_file_note'].str.replace(r'[\n]+', '', regex=True)
     df.loc[prod_val_df, 'intermediate_file_note'] = df['preservation_master_file']
     df.loc[prod_val_df, 'preservation_master_file'] = df.loc[prod_val_df, 'preservation_master_file'].str[:-9]
     df_p = df[prod_val_df]
-    
+
     arch_val_df = (df['pcdm_use'].str.contains('Validation', na=False)) & (df['preservation_master_file'].str.contains('ARCH', na=False))
     df.loc[arch_val_df, 'master_file_note'] = df['preservation_master_file']
+    df['master_file_note'] = df['master_file_note'].str.replace(r'[\n]+', '', regex=True)
     df.loc[arch_val_df, 'preservation_master_file'] = df.loc[arch_val_df, 'preservation_master_file'].str[:-9]
     df_a = df[arch_val_df]
 
-    merged_df = pd.merge(df_a, df_s[['preservation_master_file', 'service_file_note']], on='preservation_master_file', how='outer')
-    mergedd_df = pd.merge(merged_df, df_p[['preservation_master_file', 'intermediate_file_note']], on='preservation_master_file', how='outer')
-    mergedd_df['preservation_master_file'] = mergedd_df['master_file_note']
-    mergedd_df['service_file'] = mergedd_df['service_file_note_y']
-    mergedd_df['intermediate_file'] = mergedd_df['intermediate_file_note_y']
-    mergedd_df = mergedd_df.rename(columns={'service_file_note_x': 'service_file_note'})
-    mergedd_df = mergedd_df.rename(columns={'intermediate_file_note_x': 'intermediate_file_note'})
-    mergedd_df['master_file_note'] = pd.NA
-    mergedd_df['intermediate_file_note'] = pd.NA
-    mergedd_df['service_file_note'] = pd.NA
-    mergedd_df['type'] = mergedd_df['type'].mask(pd.isnull(mergedd_df['type']), 'fileset') 
-    mergedd_df['fileset_label'] = mergedd_df['fileset_label'].mask(pd.isnull(mergedd_df['fileset_label']), 'checksum files') 
-    mergedd_df['pcdm_use'] = mergedd_df['pcdm_use'].mask(pd.isnull(mergedd_df['pcdm_use']), 'Content Validation') 
-    mergedd_df = mergedd_df.drop(columns=['service_file_note_y', 'intermediate_file_note_y'])
-    mergedd_df.reset_index(drop=True, inplace=True)
-    mergedd_df.to_csv(csv_file, index=False)
-    
-    df_no_val = df[~df['pcdm_use'].str.contains('Validation', na=False)]
-    df_combined = pd.concat([df_no_val, mergedd_df], ignore_index=True)
-    df_combined.to_csv(csv_file, index=False)
+    mergedv_df = pd.merge(df_a, df_s[['preservation_master_file', 'service_file_note']], on='preservation_master_file', how='outer')
+    mergeddv_df = pd.merge(mergedv_df, df_p[['preservation_master_file', 'intermediate_file_note']], on='preservation_master_file', how='outer')
+    mergeddv_df['preservation_master_file'] = mergeddv_df['master_file_note']
+    mergeddv_df['service_file'] = mergeddv_df['service_file_note_y']
+    mergeddv_df['intermediate_file'] = mergeddv_df['intermediate_file_note_y']
+    mergeddv_df = mergeddv_df.rename(columns={'service_file_note_x': 'service_file_note'})
+    mergeddv_df = mergeddv_df.rename(columns={'intermediate_file_note_x': 'intermediate_file_note'})
+    mergeddv_df['master_file_note'] = pd.NA
+    mergeddv_df['intermediate_file_note'] = pd.NA
+    mergeddv_df['service_file_note'] = pd.NA
+    mergeddv_df['staff_notes'] = pd.NA
+    mergeddv_df['type'] = mergeddv_df['type'].mask(pd.isnull(mergeddv_df['type']), 'fileset') 
+    mergeddv_df['fileset_label'] = mergeddv_df['fileset_label'].mask(pd.isnull(mergeddv_df['fileset_label']), 'checksum files') 
+    mergeddv_df['pcdm_use'] = mergeddv_df['pcdm_use'].mask(pd.isnull(mergeddv_df['pcdm_use']), 'Content Validation') 
+    mergeddv_df = mergeddv_df.drop(columns=['service_file_note_y', 'intermediate_file_note_y'])
+    mergeddv_df.reset_index(drop=True, inplace=True)
+    mergeddv_df.to_csv(csv_file, index=False, header=True)
+
+    df_combined = pd.concat([mergedd_df, mergeddv_df], ignore_index=True)
+    df_combined.to_csv(csv_file, index=False, header=True)
 
 def main_menu(destination):
     print(f'staging directory: {destination}')
@@ -594,8 +554,6 @@ def main(args_):
                 ['type', 'fileset_label', 'pcdm_use',
                  'preservation_master_file', 'extent',
                  'technical_note', 'master_file_note'])
-            clean_csv(csv_file)
-            val_csv(csv_file)
         elif choice == 'Q':
             print(' - Exiting program. Goodbye!')
             break
