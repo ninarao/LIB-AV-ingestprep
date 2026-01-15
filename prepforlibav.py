@@ -514,7 +514,48 @@ def clean_csv(csv_file):
     df_dropped.to_csv(csv_file, index=False, header=True)
     df_cleaned = df_dropped.dropna(subset=['preservation_master_file', 'intermediate_file', 'service_file'], how='all')
     df_cleaned.to_csv(csv_file, index=False, header=True)
+
+def val_csv(csv_file):
+    df = pd.read_csv(csv_file)
     
+    serv_val_df = (df['pcdm_use'].str.contains('Validation', na=False)) & (df['preservation_master_file'].str.contains('SERV', na=False))
+    df['service_file_note'] = df['service_file_note'].astype(str)
+    df.loc[serv_val_df, 'service_file_note'] = df['preservation_master_file']
+    df.loc[serv_val_df, 'preservation_master_file'] = df.loc[serv_val_df, 'preservation_master_file'].str[:-9]
+    df_s = df[serv_val_df]
+    
+    prod_val_df = (df['pcdm_use'].str.contains('Validation', na=False)) & (df['preservation_master_file'].str.contains('PROD', na=False))
+    df['intermediate_file_note'] = df['intermediate_file_note'].astype(str)
+    df.loc[prod_val_df, 'intermediate_file_note'] = df['preservation_master_file']
+    df.loc[prod_val_df, 'preservation_master_file'] = df.loc[prod_val_df, 'preservation_master_file'].str[:-9]
+    df_p = df[prod_val_df]
+    
+    arch_val_df = (df['pcdm_use'].str.contains('Validation', na=False)) & (df['preservation_master_file'].str.contains('ARCH', na=False))
+    df.loc[arch_val_df, 'master_file_note'] = df['preservation_master_file']
+    df.loc[arch_val_df, 'preservation_master_file'] = df.loc[arch_val_df, 'preservation_master_file'].str[:-9]
+    df_a = df[arch_val_df]
+
+    merged_df = pd.merge(df_a, df_s[['preservation_master_file', 'service_file_note']], on='preservation_master_file', how='outer')
+    mergedd_df = pd.merge(merged_df, df_p[['preservation_master_file', 'intermediate_file_note']], on='preservation_master_file', how='outer')
+    mergedd_df['preservation_master_file'] = mergedd_df['master_file_note']
+    mergedd_df['service_file'] = mergedd_df['service_file_note_y']
+    mergedd_df['intermediate_file'] = mergedd_df['intermediate_file_note_y']
+    mergedd_df = mergedd_df.rename(columns={'service_file_note_x': 'service_file_note'})
+    mergedd_df = mergedd_df.rename(columns={'intermediate_file_note_x': 'intermediate_file_note'})
+    mergedd_df['master_file_note'] = pd.NA
+    mergedd_df['intermediate_file_note'] = pd.NA
+    mergedd_df['service_file_note'] = pd.NA
+    mergedd_df['type'] = mergedd_df['type'].mask(pd.isnull(mergedd_df['type']), 'fileset') 
+    mergedd_df['fileset_label'] = mergedd_df['fileset_label'].mask(pd.isnull(mergedd_df['fileset_label']), 'checksum files') 
+    mergedd_df['pcdm_use'] = mergedd_df['pcdm_use'].mask(pd.isnull(mergedd_df['pcdm_use']), 'Content Validation') 
+    mergedd_df = mergedd_df.drop(columns=['service_file_note_y', 'intermediate_file_note_y'])
+    mergedd_df.reset_index(drop=True, inplace=True)
+    mergedd_df.to_csv(csv_file, index=False)
+    
+    df_no_val = df[~df['pcdm_use'].str.contains('Validation', na=False)]
+    df_combined = pd.concat([df_no_val, mergedd_df], ignore_index=True)
+    df_combined.to_csv(csv_file, index=False)
+
 def main_menu(destination):
     print(f'staging directory: {destination}')
     print('\nWhat would you like to do?')
@@ -554,6 +595,7 @@ def main(args_):
                  'preservation_master_file', 'extent',
                  'technical_note', 'master_file_note'])
             clean_csv(csv_file)
+            val_csv(csv_file)
         elif choice == 'Q':
             print(' - Exiting program. Goodbye!')
             break
