@@ -8,13 +8,13 @@ import datetime
 import argparse
 import shutil
 
-# sys.argv = [
-#    '/Users/nraogra/Desktop/webvtt_v2/copy_and_rename.py',
-#    '/Users/nraogra/Desktop/webvtt_v2/metadata_updated',
-#    '-c',
-#    '/Users/nraogra/Desktop/webvtt_v2/webvtt_metadata.csv',
-#    '-o',
-#    ]
+sys.argv = [
+   '/Users/nraogra/Desktop/webvtt_v2/copy_and_rename.py',
+   '/Users/nraogra/Desktop/Rose_MSS0934',
+   '-c',
+   '/Users/nraogra/Desktop/Rose_MSS0934/Rose_MSS0934_pids.csv',
+   '-o',
+   ]
 
 def valid_directory(path_string):
     if not os.path.isdir(path_string):
@@ -126,10 +126,10 @@ def copy_and_rename(file_list, outputDir, overwrite):
                 continue
     return files_renamed, files_skipped_2
 
-def rename_setup(source_dir, m_csv, outputDir, overwrite):
+def rename_setup(source_dir, m_csv):
     file_list = []
     files_skipped_1 = []
-    for sourcefile in Path(source_dir).rglob('*'):
+    for sourcefile in Path(source_dir).glob('*'):
         if not sourcefile.is_file():
             continue
         else:
@@ -148,9 +148,7 @@ def rename_setup(source_dir, m_csv, outputDir, overwrite):
             else:
                 print(f'{outputName}: will be renamed to {new_val}{fileExt}')
                 file_list.append((sourcefile, new_val))
-    files_renamed, files_skipped_2 = copy_and_rename(file_list, outputDir, overwrite)
-    skips = files_skipped_1 + files_skipped_2
-    return files_renamed, skips
+    return file_list, files_skipped_1
 
 def main(args_):
     args = setup(args_)
@@ -170,7 +168,9 @@ def main(args_):
     proceed = ask_yes_no('proceed with these settings?')
     if proceed =='Y':
         outputDir = make_output_dir(source_dir)
-        files_renamed, skips = rename_setup(source_dir, m_csv, outputDir, overwrite)
+        file_list, files_skipped_1 = rename_setup(source_dir, m_csv)
+        files_renamed, files_skipped_2 = copy_and_rename(file_list, outputDir, overwrite)
+        skips = files_skipped_1 + files_skipped_2
         make_log(files_renamed, skips, outputDir)
     else:
         print('exiting. goodbye!')
