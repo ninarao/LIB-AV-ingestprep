@@ -51,7 +51,7 @@ def ask_yes_no(question):
             return 'N'
 
 def make_output_dir(source_dir):
-    outputDir = os.path.join(source_dir, 'metadata_updated')
+    outputDir = os.path.join(source_dir, 'renamed_files')
     print("checking for output folder...")
     if not os.path.exists(outputDir):
         os.mkdir(outputDir)
@@ -124,8 +124,6 @@ def copy_and_rename(file_list, outputDir, overwrite):
                 print(f'{fileName}: could not copy due to error: "{e}"')
                 files_skipped_2.append(f'{fileName}: could not copy due to error: "{e}"')
                 continue
-    print(files_renamed)
-    print(files_skipped_2)
     return files_renamed, files_skipped_2
 
 def rename_setup(source_dir, m_csv, outputDir, overwrite):
@@ -148,7 +146,7 @@ def rename_setup(source_dir, m_csv, outputDir, overwrite):
                 files_skipped_1.append(f'{outputName}: no new name in csv')
                 continue
             else:
-                print(f'{outputName}: will be renamed to {new_val}')
+                print(f'{outputName}: will be renamed to {new_val}{fileExt}')
                 file_list.append((sourcefile, new_val))
     files_renamed, files_skipped_2 = copy_and_rename(file_list, outputDir, overwrite)
     skips = files_skipped_1 + files_skipped_2
