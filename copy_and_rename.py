@@ -8,13 +8,13 @@ import datetime
 import argparse
 import shutil
 
-sys.argv = [
-   '/Users/nraogra/Desktop/webvtt_v2/copy_and_rename.py',
-   '/Users/nraogra/Desktop/Rose_MSS0934',
-   '-c',
-   '/Users/nraogra/Desktop/Rose_MSS0934/Rose_MSS0934_pids.csv',
-   '-o',
-   ]
+# sys.argv = [
+#   '/Users/nraogra/Desktop/webvtt_v2/copy_and_rename.py',
+#   '/Users/nraogra/Desktop/Rose_MSS0934',
+#   '-c',
+#   '/Users/nraogra/Desktop/Rose_MSS0934/Rose_MSS0934_pids.csv',
+#   '-o',
+#   ]
 
 def valid_directory(path_string):
     if not os.path.isdir(path_string):
