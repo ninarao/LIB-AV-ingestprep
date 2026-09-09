@@ -9,12 +9,12 @@ import argparse
 import shutil
 
 # sys.argv = [
-#   '/Users/nraogra/Desktop/webvtt_v2/copy_and_rename.py',
-#   '/Users/nraogra/Desktop/Rose_MSS0934',
-#   '-c',
-#   '/Users/nraogra/Desktop/Rose_MSS0934/Rose_MSS0934_pids.csv',
-#   '-o',
-#   ]
+#    '/Users/nraogra/Desktop/Captioning/copy_and_rename.py',
+#    '/Users/nraogra/Desktop/test_directory',
+#    '-c',
+#    '/Users/nraogra/Desktop/Captioning/rename_pids.csv',
+#    '-o',
+#    ]
 
 def valid_directory(path_string):
     if not os.path.isdir(path_string):
@@ -146,7 +146,7 @@ def rename_setup(source_dir, m_csv):
                 files_skipped_1.append(f'{outputName}: no new name in csv')
                 continue
             else:
-                print(f'{outputName}: will be renamed to {new_val}{fileExt}')
+                print(f'{outputName}: will be renamed to {justName}_{new_val}{fileExt}')
                 file_list.append((sourcefile, new_val))
     return file_list, files_skipped_1
 
@@ -158,7 +158,7 @@ def main(args_):
     print(f'source file directory:\n\t{source_dir}')
     if args.csv != None:
         m_csv = args.csv
-        print(f'rename csv (new file names must be in column B):\n\t{m_csv}')
+        print(f'rename csv (new file name string must be in column B):\n\t{m_csv}')
     else:
         sys.exit('error: csv is needed to rename files')
     if overwrite == True:
