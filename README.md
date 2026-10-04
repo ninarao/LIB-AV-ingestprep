@@ -6,8 +6,8 @@ Python scripts that automate digital preservation workflows in Emory Libraries M
 - copy files to a staging directory
 - get mediainfo metadata from files
 - move files to the top level of the directory
-- renames files and staging directory according to the LIB-AV naming convention
-- prepares and arranges an ingest csv
+- rename files and staging directory according to the LIB-AV naming convention
+- prepare and arrange an ingest csv
 
 `copy_and_rename.py` copies files to a new directory and adds a suffix to filenames using a csv to match
 - files not listed in the csv or with no suffix given in the csv are skipped
